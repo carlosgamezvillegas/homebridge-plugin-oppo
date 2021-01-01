@@ -1,0 +1,23 @@
+{
+  "pluginAlias": "oppoPlugin",
+  "pluginType": "platform",
+  "singular": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string",
+        "required": true,
+        "default": "Oppo 203"
+
+      },
+      "ip":{"title": "IP Address",
+        "type": "string",
+        "required": true,
+        "default": "69.104.58.112"
+
+      }
+    }
+  }
+}
