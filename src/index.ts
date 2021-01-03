@@ -2,24 +2,20 @@ import { API, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, 
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { Service, CharacteristicValue, CharacteristicSetCallback, CharacteristicGetCallback } from 'homebridge';
 
-
-
-
 import console from 'console';
-
 import net from 'net';
-const OPPO_IP ='69.104.58.112';
+
+const OPPO_IP ='192.168.86.47';
 const OPPO_PORT = 23;
-//const timer;
 const timeout = 2000;
 let powerState = false;
 let playBackState = [false, false, false];
 let HDROutput = [false, false, false];
 let audioType=[false, false];
 let key = '';
-//const client;
+let recon=0;
 let powerState_TV = 0;
-
+let counter=0;
 key = query('VERBOSE MODE');
 
 //console.log(key);
@@ -39,19 +35,40 @@ client.on('error', (e) => {
   clearTimeout(timer);
   console.log(`[oppo-udp-20x] [Error] ${e}`);
   console.log(`[oppo-udp-20x] [Trying to reconnect] ${e}`);
+  counter += 1;
+if (counter<10){reconnect();}
+else{
+  //
+}
+
+
+
+
+});
+
+client.on('close', function () {
+  console.log('dis-connected from server');
+  recon=1;
+  client.connect(OPPO_PORT, OPPO_IP, () => {
+    clearTimeout(timer);
+    console.log(`[oppo-udp-20x] [Reconnecting]`);
+    client.write(query('VERBOSE MODE'));
+  
+  
+  });
+
   reconnect();
 
 
 });
 
 function reconnect(){
-
+  client.destroy();
   client.connect(OPPO_PORT, OPPO_IP, () => {
     clearTimeout(timer);
-    console.log(`[oppo-udp-20x] [Sending] ${JSON.stringify(key)}`);
+    console.log(`[oppo-udp-20x] [Reconnecting]`);
+    client.write(query('VERBOSE MODE'));
   
-  
-    client.write(key);
   
   });
 
@@ -72,22 +89,61 @@ const timer = setTimeout(() => {
   // client.destroy();
 }, timeout);
 
+client.setKeepAlive(true, 5000);
+
+
+setInterval(() => {
+  let connetionState=client.writable
+  if (connetionState===false) {
+    client.destroy();
+  client.connect(OPPO_PORT, OPPO_IP, () => {
+    clearTimeout(timer);
+    console.log(`[oppo-udp-20x] [Reconnecting]`);
+    client.write(query('VERBOSE MODE'));
+    client.setKeepAlive(true, 5000);
+  })}
+  else {
+    //
+  }
+}, 100000);
 
 
 /////Sending Instructions/////////////////////////////////////////////////////////////////////////////////////////////////////
 function sending(press) {
 
-  let i = 0;
+
+ 
+    let i = 0;
 
 
-  while (i < press.length) {
+    while (i < press.length) {
+  
+      console.log(`[oppo-udp-20x] [Sending] ${JSON.stringify(press[i])}`);
+      client.write(press[i]);
+      i += 1;
+    }
+  
 
-    console.log(`[oppo-udp-20x] [Sending] ${JSON.stringify(press[i])}`);
-    client.write(press[i]);
-    i += 1;
-  }
+
+
+  
+
+ 
 }
 
+
+if (recon===1){
+ 
+  client.connect(OPPO_PORT, OPPO_IP, () => {
+    clearTimeout(timer);
+    console.log(`[oppo-udp-20x] [Reconnecting]`);
+    client.write(query('VERBOSE MODE'));
+  
+  
+  });
+recon=0;
+
+}
 
 
 //////////Current Status//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -575,6 +631,8 @@ class oppoAccessory {
     stop.getCharacteristic(this.platform.Characteristic.On)
       .on('get', this.stopSwitchStateGet.bind(this))
       .on('set', this.stopSwitchStateSet.bind(this));
+
+      
   
 
     /**
@@ -1098,3 +1156,4 @@ export = (api: API) => {
   api.registerPlatform(PLATFORM_NAME, oppoPlatform);
 
 };
+
