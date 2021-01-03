@@ -1,11 +1,9 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-const settings_1 = require("./settings");
-const console_1 = __importDefault(require("console"));
-const net_1 = __importDefault(require("net"));
-const OPPO_IP = '69.104.58.112';
+
+const  settings = require("./settings");
+const console =  require("console");
+const net=  require("net");
+const OPPO_IP ='192.168.86.47';
 const OPPO_PORT = 23;
 //const timer;
 const timeout = 2000;
@@ -14,48 +12,106 @@ let playBackState = [false, false, false];
 let HDROutput = [false, false, false];
 let audioType = [false, false];
 let key = '';
-//const client;
+let recon=0;
+var counter = 0;
+
 let powerState_TV = 0;
 key = query('VERBOSE MODE');
-//console.log(key);
+
 ///Connection to Oppo/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-const client = new net_1.default.Socket()
+const client = new net.Socket()
     .on('data', (data) => {
     clearTimeout(timer);
-    console_1.default.log(`[oppo-udp-20x] [Response] ${data}`);
+    console.log(`[oppo-udp-20x] [Response] ${data}`);
     eventDecoder(data);
     // client.destroy(); // kill client after server's response
 });
+
+client.setKeepAlive(true, 1000);
+setInterval(() => {
+  let connetionState=client.writable
+  if (connetionState===false) {
+    client.destroy();
+  
+  client.connect(OPPO_PORT, OPPO_IP, () => {
+    clearTimeout(timer);
+    console.log(`[oppo-udp-20x] [Reconnecting interval]`);
+client.write(query('VERBOSE MODE'));
+client.setKeepAlive(true, 5000);
+  })}
+  else {
+    //
+  }
+}, 10000);
+
 client.on('error', (e) => {
     clearTimeout(timer);
-    console_1.default.log(`[oppo-udp-20x] [Error] ${e}`);
-    console_1.default.log(`[oppo-udp-20x] [Trying to reconnect] ${e}`);
-    reconnect();
+    console.log(`[oppo-udp-20x] [Error] ${e}`);
+    console.log(`[oppo-udp-20x] [Trying to reconnect error] ${e}`);
+  counter += 1;
+if (counter<10){reconnect();}
+else{
+  //
+}
+
 });
 function reconnect() {
+
     client.connect(OPPO_PORT, OPPO_IP, () => {
         clearTimeout(timer);
-        console_1.default.log(`[oppo-udp-20x] [Sending] ${JSON.stringify(key)}`);
-        client.write(key);
+        console.log(`[oppo-udp-20x] [Connecting Function]`);
+        client.write(query('VERBOSE MODE'));
+  client.setKeepAlive(true, 1000);
     });
 }
 client.connect(OPPO_PORT, OPPO_IP, () => {
     clearTimeout(timer);
-    console_1.default.log(`[oppo-udp-20x] [Sending] ${JSON.stringify(key)}`);
+    console.log(`[oppo-udp-20x] [Sending] ${JSON.stringify(key)}`);
     client.write(key);
 });
+
+client.on('close', function () {
+ // console.log('[oppo-udp-20x] dis-connected from server');
+
+ recon=1;
+ 
+
+  client.connect(OPPO_PORT, OPPO_IP, () => {
+    clearTimeout(timer);
+  // console.log(`[oppo-udp-20x] [Reconnecting on close]`);
+
+  
+  client.setKeepAlive(true, 1000);
+  
+  });
+ // reconnect();
+
+});
+
 const timer = setTimeout(() => {
-    console_1.default.log('[ERROR] Attempt at connection exceeded timeout value');
+    console.log('[ERROR] Attempt at connection exceeded timeout value');
     // client.destroy();
 }, timeout);
 /////Sending Instructions/////////////////////////////////////////////////////////////////////////////////////////////////////
 function sending(press) {
     let i = 0;
     while (i < press.length) {
-        console_1.default.log(`[oppo-udp-20x] [Sending] ${JSON.stringify(press[i])}`);
-        client.write(press[i]);
-        i += 1;
+      console.log(`[oppo-udp-20x] [Sending] ${JSON.stringify(press[i])}`);
+      client.write(press[i]);
+      i += 1;
     }
+}
+
+if (recon===1){
+client.destroy();
+ 
+  client.connect(OPPO_PORT, OPPO_IP, () => {
+    clearTimeout(timer);
+    console.log(`[oppo-udp-20x] [Reconnecting again]`);
+    client.write(query('VERBOSE MODE'));  
+  });
+recon=0;
+
 }
 //////////Current Status//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 function newPowerState(newValue) {
@@ -456,18 +512,7 @@ class oppoAccessory {
             this.accessory.addService(this.platform.Service.MotionSensor, 'HDR 10 Video', 'YourUniqueIdentifier-2');
         const SDR = this.accessory.getService('SDR Video') ||
             this.accessory.addService(this.platform.Service.MotionSensor, 'SDR Video', 'YourUniqueIdentifier-3');
-        //
-        /*
-        const playState = this.accessory.getService('Play Status') ||
-          this.accessory.addService(this.platform.Service.MotionSensor, 'Play Status', 'YourUniqueIdentifier-4');
-    
-        const stopState = this.accessory.getService('Stop Status') ||
-          this.accessory.addService(this.platform.Service.MotionSensor, 'Stop Status', 'YourUniqueIdentifier-5');
-    
-        const pauseState = this.accessory.getService('Pause Status') ||
-          this.accessory.addService(this.platform.Service.MotionSensor, 'Pause Status', 'YourUniqueIdentifier-6');
-    
-        */
+
         const dolbySound = this.accessory.getService('Dolby Atmos') ||
             this.accessory.addService(this.platform.Service.MotionSensor, 'Dolby Atmos', 'YourUniqueIdentifier-8');
         const dtsSound = this.accessory.getService('DTS') ||
@@ -498,19 +543,7 @@ class oppoAccessory {
             }
             callback(null);
         });
-        // tvService.setCharacteristic(this.platform.Characteristic.ActiveIdentifier, 1);
-        /*/ handle input source changes
-        tvService.getCharacteristic(this.platform.Characteristic.ActiveIdentifier)
-          .on('set', (newValue, callback) => {
-      
-            // the value will be the value you set for the Identifier Characteristic
-            // on the Input Source service that was selected - see input sources below.
-      
-            this.platform.log.info('set Active Identifier => setNewValue: ' + newValue);
-            callback(null);
-          });
-          */
-        // handle remote control input
+
         tvService.getCharacteristic(this.platform.Characteristic.RemoteKey)
             .on('set', (newValue, callback) => {
             switch (newValue) {
@@ -603,27 +636,17 @@ class oppoAccessory {
          */
         // const MotionDetected = false;
         setInterval(() => {
-            //console.log('Updating');
-            // console.log(powerState, HDROutput, powerState_TV, playBackState, audioType);
-            // EXAMPLE - inverse the trigger
-            // MotionDetected = !MotionDetected;
-            //this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(powerState);
-            // push the new value to HomeKit
+
             this.service.updateCharacteristic(this.platform.Characteristic.On, powerState);
             dolbyVision.updateCharacteristic(this.platform.Characteristic.MotionDetected, HDROutput[0]);
             hdr10.updateCharacteristic(this.platform.Characteristic.MotionDetected, HDROutput[1]);
             SDR.updateCharacteristic(this.platform.Characteristic.MotionDetected, HDROutput[2]);
-            // playState.updateCharacteristic(this.platform.Characteristic.MotionDetected, playBackState[0]);
-            // pauseState.updateCharacteristic(this.platform.Characteristic.MotionDetected, playBackState[1]);
-            // stopState.updateCharacteristic(this.platform.Characteristic.MotionDetected, playBackState[2]);
             tvService.updateCharacteristic(this.platform.Characteristic.Active, powerState_TV);
             play.updateCharacteristic(this.platform.Characteristic.On, playBackState[0]);
             pause.updateCharacteristic(this.platform.Characteristic.On, playBackState[1]);
             stop.updateCharacteristic(this.platform.Characteristic.On, playBackState[2]);
             dolbySound.updateCharacteristic(this.platform.Characteristic.MotionDetected, audioType[0]);
             dtsSound.updateCharacteristic(this.platform.Characteristic.MotionDetected, audioType[1]);
-            //this.platform.log.debug('Triggering dolbyVision:',HDROutput[0]);
-            //this.platform.log.debug('Triggering hdr10:', HDROutput[1]);
         }, 1000);
     }
     /**
@@ -821,7 +844,7 @@ class oppoPlatform {
                 else if (!device) {
                     // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, eg.:
                     // remove platform accessories when no longer present
-                    this.api.unregisterPlatformAccessories(settings_1.PLUGIN_NAME, settings_1.PLATFORM_NAME, [existingAccessory]);
+                    this.api.unregisterPlatformAccessories( settings.PLUGIN_NAME,  settings.PLATFORM_NAME, [existingAccessory]);
                     this.log.info('Removing existing accessory from cache:', existingAccessory.displayName);
                 }
             }
@@ -837,13 +860,12 @@ class oppoPlatform {
                 // this is imported from `platformAccessory.ts`
                 new oppoAccessory(this, accessory);
                 // link the accessory to your platform
-                this.api.publishExternalAccessories(settings_1.PLUGIN_NAME, [accessory]);
+                this.api.publishExternalAccessories( settings.PLUGIN_NAME, [accessory]);
                 //this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
             }
         }
     }
 }
 module.exports = (api) => {
-    api.registerPlatform(settings_1.PLATFORM_NAME, oppoPlatform);
+    api.registerPlatform( settings.PLATFORM_NAME, oppoPlatform);
 };
-//# sourceMappingURL=index.js.map
