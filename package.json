@@ -1,6 +1,6 @@
 {
   "private": false,
-  "displayName": "Oppo 203",
+  "displayName": "Homebridge Oppo 203/203",
   "name": "homebridge-oppo-203",
   "version": "1.0.1",
   "description": "A short description about what your plugin does.",
