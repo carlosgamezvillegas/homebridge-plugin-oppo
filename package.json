@@ -1,10 +1,9 @@
 {
-  "private": false,
-  "displayName": "Homebridge Oppo 203/203",
-  "name": "homebridge-oppo-203",
-  "version": "1.0.1",
-  "description": "A short description about what your plugin does.",
-  "license": "Apache-2.0",
+  "displayName": "Homebridge Oppo 203/205",
+  "name": "homebridge-oppo-udp",
+  "version": "1.1.2",
+  "description": "Homebridge Plugin to control your Oppo 203/205.",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git://github.com/carlosgamezvillegas/homebridge-plugin-oppo.git"
@@ -17,15 +16,13 @@
     "homebridge": ">=1.0.0"
   },
   "main": "dist/index.js",
-  "scripts": {
-    "lint": "eslint src/**.ts --max-warnings=0",
-    "watch": "npm run build && npm link && nodemon",
-    "build": "rimraf ./dist && tsc",
-    "prepublishOnly": "npm run lint && npm run build"
-  },
+ 
   "keywords": [
     "homebridge-plugin",
-    "homebridge-oppo"
+    "homebridge-oppo",
+    "oppo",
+    "oppo-203",
+    "oppo-205"
   ],
   "dependencies": {},
   "devDependencies": {
