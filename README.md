@@ -32,7 +32,7 @@ npm i homebridge-oppo-udp
 
 # Configuration
 
-Add the `oppoPlugin"` platform in `config.json` in your home directory inside `.homebridge`.
+Add the `oppoPlugin` platform in `config.json` in your home directory inside `.homebridge`.
 
 Example configuration:
 
@@ -40,7 +40,7 @@ Example configuration:
 {
   "platforms": [
     {
-          "name": "Oppo 203",
+            "name": "Oppo 203",
             "ip": "Youre IP Address", 
             "pollingInterval": 1000,
             "modelName": "UDP-203",
@@ -53,6 +53,7 @@ Example configuration:
 ```
 
 Make sure you change the IP Address the one the devices is currently using.
+
 
 ### Adding the Oppo to the Home app
 Since HomeKit expects only one Oppo per bridge they will be declared as external accessories and acts as a bridge.  
