@@ -12,10 +12,12 @@ If you have any suggestions/improvements please let know.
 
 Enjoy!!
 
-
-install using:
+# Installation
+install using the following command in terminal:
 
 npm i homebridge-oppo-udp
+
+
 
 In the config file under the platform section add the following:
             "name": "Oppo 203",
@@ -27,8 +29,9 @@ In the config file under the platform section add the following:
             "platform": "oppoPlugin"
             
             
-Make sure you change the IP Address
+Make sure you change the IP Address the one the devices is currently using.
 
+# Add the external accessory
 Note: Right now plugin is published as an external device. After you include information in the config file and restart homebridge, please add accessory  manually the in the home app (just click add accessroy>I don't have a code or cannot scan>). The accessory should be visible there and to add it just use your Homebridge setup code.
 
 
