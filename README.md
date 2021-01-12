@@ -11,27 +11,59 @@ This is my first plugin for Homebridge. It needs a lot of work and hopefully I w
 If you have any suggestions/improvements please let know.
 
 Enjoy!!
+### Features
+* HomeKit TV integration
+* HomeKit automations
+* Turn TV on/off
+* Mute/Unmute
+* Volume control (as light bulb, buttons or through iOS remote app)
+* Change sound output
+* Switch inputs
+* Media control
+* Emulate remote control
+* Turn on/off the the device
+
 
 # Installation
 install using the following command in terminal:
-
+```sh
 npm i homebridge-oppo-udp
+```
 
+# Configuration
 
+Add the `oppoPlugin"` platform in `config.json` in your home directory inside `.homebridge`.
 
-In the config file under the platform section add the following:
-            "name": "Oppo 203",
+Example configuration:
+
+```js
+{
+  "platforms": [
+    {
+          "name": "Oppo 203",
             "ip": "Youre IP Address", 
             "pollingInterval": 1000,
             "modelName": "UDP-203",
             "manufactur": "Oppo Digital Inc",
             "serialN": "B210U71647033894",
             "platform": "oppoPlugin"
-            
-            
+}
+]
+}
+```
+
 Make sure you change the IP Address the one the devices is currently using.
 
-# Add the external accessory
-Note: Right now plugin is published as an external device. After you include information in the config file and restart homebridge, please add accessory  manually the in the home app (just click add accessroy>I don't have a code or cannot scan>). The accessory should be visible there and to add it just use your Homebridge setup code.
+### Adding the Oppo to the Home app
+Since HomeKit expects only one Oppo per bridge they will be declared as external accessories and acts as a bridge.  
+This means that a device will not appear in your Home app until you add it!
 
+To add the Oppo to HomeKit follow this steps:
 
+1. Open the Home <img src="https://user-images.githubusercontent.com/3979615/78010622-4ea1d380-738e-11ea-8a17-e6a465eeec35.png" height="16.42px"> app on your device.
+2. Tap the Home tab, then tap <img src="https://user-images.githubusercontent.com/3979615/78010869-9aed1380-738e-11ea-9644-9f46b3633026.png" height="16.42px">.
+3. Tap *Add Accessory*, and select *I Don't Have a Code or Cannot Scan*.
+4. Select the accessory you want to pair.
+5. Enter the Homebridge PIN, this can be found under the QR code in Homebridge UI or your Homebridge logs, alternatively you can select *Use Camera* and scan the QR code again.
+
+For more info check the homebridge wiki [Connecting Homebridge To HomeKit](https://github.com/homebridge/homebridge/wiki/Connecting-Homebridge-To-HomeKit).
