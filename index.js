@@ -22,6 +22,7 @@ class oppoAccessory {
         this.powerState_TV = 0;
         this.currentVolume = 0;
         this.currentMuteState = false;
+        this.currentVolumeSwitch=false;
         this.inputID = 1;
         this.mediaState = 3;
         this.turnOffAllUsed = false;
@@ -1632,14 +1633,19 @@ class oppoAccessory {
             this.speakerService.getCharacteristic(this.platform.Characteristic.Volume).updateValue(this.currentVolume);
             this.tvService.getCharacteristic(this.platform.Characteristic.CurrentMediaState).updateValue(this.mediaState);
             this.speakerService.getCharacteristic(this.platform.Characteristic.Mute).updateValue(this.currentMuteState)
+            this.tvService.updateCharacteristic(this.platform.Characteristic.CurrentMediaState, this.mediaState);
+            this.tvService.updateCharacteristic(this.platform.Characteristic.ActiveIdentifier, this.inputID);
+            this.speakerService.updateCharacteristic(this.platform.Characteristic.Volume, this.currentVolume);
+            this.speakerService.updateCharacteristic(this.platform.Characteristic.Mute, this.currentMuteState);
             if (this.config.inputButtons === true) {
                 this.bluRayInput.updateCharacteristic(this.platform.Characteristic.On, this.inputState[0]);
                 this.hdmiIn.updateCharacteristic(this.platform.Characteristic.On, this.inputState[1]);
                 this.hdmiOut.updateCharacteristic(this.platform.Characteristic.On, this.inputState[2]);
             }
             if (this.config.volume === true) {
-
+                this.volumeDimmer.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentVolume);
                 this.volumeDimmer.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentVolume);
+                this.volumeDimmer.updateCharacteristic(this.platform.Characteristic.On, this.currentVolumeSwitch);
             }
 
             /*
@@ -1874,6 +1880,7 @@ class oppoAccessory {
         this.powerState = newValue;
         this.service.updateCharacteristic(this.platform.Characteristic.On, this.powerState);
         this.tvService.updateCharacteristic(this.platform.Characteristic.Active, this.powerState_TV);
+      
     }
     newPlayBackState(newPlay) {
         this.playBackState = newPlay;
@@ -1892,7 +1899,9 @@ class oppoAccessory {
         this.play.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[0]);
         this.pause.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[1]);
         this.stop.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[2]);
+        this.tvService.updateCharacteristic(this.platform.Characteristic.CurrentMediaState, this.mediaState);
         this.tvService.getCharacteristic(this.platform.Characteristic.CurrentMediaState).updateValue(this.mediaState);
+      
         //this.platform.log(playBackState);
     }
     newHDRState(newHDR) {
@@ -1900,11 +1909,13 @@ class oppoAccessory {
         this.dolbyVision.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[0]);
         this.hdr10.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[1]);
         this.SDR.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[2]);
+        
     }
     newAudioType(newAT) {
         this.audioType = newAT;
         this.dolbySound.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.audioType[0]);
         this.dtsSound.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.audioType[1]);
+      
     }
     newInputState(newInput) {
         this.inputState = newInput;
@@ -1921,27 +1932,37 @@ class oppoAccessory {
         if (this.inputState[0] === false && this.inputState[1] === false && this.inputState[2] === false) {
             this.inputID = 0;
         }
+        this.tvService.updateCharacteristic(this.platform.Characteristic.ActiveIdentifier, this.inputID);
         this.tvService.getCharacteristic(this.platform.Characteristic.ActiveIdentifier).updateValue(this.inputID);
         if (this.config.inputButtons === true) {
             this.bluRayInput.updateCharacteristic(this.platform.Characteristic.On, this.inputState[0]);
             this.hdmiIn.updateCharacteristic(this.platform.Characteristic.On, this.inputState[1]);
             this.hdmiOut.updateCharacteristic(this.platform.Characteristic.On, this.inputState[2]);
         }
+       
     }
 
     newVoluemeState(newVolumeNum) {
         this.currentVolume = newVolumeNum;
         if (newVolumeNum === 0) {
             this.currentMuteState = true;
+            this.currentVolumeSwitch=false;
         }
         if (newVolumeNum != 0) {
             this.currentMuteState = false;
+            this.currentVolumeSwitch= true;
         }
+
+        this.speakerService.updateCharacteristic(this.platform.Characteristic.Volume, this.currentVolume);
+        this.speakerService.updateCharacteristic(this.platform.Characteristic.Mute, this.currentMuteState);
         this.speakerService.getCharacteristic(this.platform.Characteristic.Volume).updateValue(this.currentVolume);
         this.speakerService.getCharacteristic(this.platform.Characteristic.Mute).updateValue(this.currentMuteState)
         if (this.config.volume === true) {
+            this.volumeDimmer.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentVolume);
             this.volumeDimmer.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentVolume);
+            this.volumeDimmer.updateCharacteristic(this.platform.Characteristic.On, this.currentVolumeSwitch);
         }
+        
     }
 
 
@@ -1971,19 +1992,21 @@ class oppoAccessory {
             else if (res[i].includes('OK ON')) {
                 this.reconnectionCounter = 0;
                 this.newPowerState(true);
-
+                setTimeout(() => {
+                    this.sending([this.query('VOLUME STATUS')]);
+                }, 100);
                 if (this.firstConnection === true) {
                     this.platform.log('First Update');
                     this.sending(this.queryKeys(['PLAYBACK STATUS']));
                     setTimeout(() => {
                         this.sending(this.queryKeys(['HDR STATUS']));
-                    }, 200);
+                    }, 300);
                     setTimeout(() => {
                         this.sending([this.query('INPUT STATUS')]);
-                    }, 200);
+                    }, 400);
                     setTimeout(() => {
                         this.sending([this.query('VOLUME STATUS')]);
-                    }, 200);
+                    }, 500);
                     this.firstConnection = false;
                 }
 
@@ -1998,16 +2021,30 @@ class oppoAccessory {
                     }, 100);
                     setTimeout(() => {
                         this.sending([this.query('INPUT STATUS')]);
-                    }, 100);
+                    }, 200);
                     setTimeout(() => {
                         this.sending([this.query('VOLUME STATUS')]);
-                    }, 100);
+                    }, 300);
                 }, 1000);
                 this.firstConnection === false;
             }
-
+            else if (res[i].includes('DISC')) {
+                this.newPowerState(true);
+                setTimeout(() => {
+                    this.sending(this.queryKeys(['PLAYBACK STATUS']));
+                    setTimeout(() => {
+                        this.sending(this.queryKeys(['HDR STATUS']));
+                    }, 100);
+                    setTimeout(() => {
+                        this.sending([this.query('INPUT STATUS')]);
+                    }, 200);
+                    setTimeout(() => {
+                        this.sending([this.query('VOLUME STATUS')]);
+                    }, 300);
+                }, 1000);
+               
+            }
             else if (res[i].includes('UVL') || res[i].includes('QVL')) {
-
                 let numberOnly = res[i].replace(/^\D+/g, '')
                 this.newVoluemeState(parseInt(numberOnly, 10))
 
@@ -2040,6 +2077,9 @@ class oppoAccessory {
                 setTimeout(() => {
                     this.sending(this.queryKeys(['HDR STATUS']));
                 }, 2000);
+                setTimeout(() => {
+                    this.sending([this.query('VOLUME STATUS')]);
+                }, 1500);
             }
             else if (res[i].includes('OK HDR')) {
                 this.newHDRState([false, true, false]);
@@ -2070,8 +2110,14 @@ class oppoAccessory {
                 this.newPlayBackState([false, false, false]);
                 this.newHDRState([false, false, true]);
                 this.newAudioType([false, false]);
-                this.sending([this.query('INPUT STATUS')]);
-                this.sending([this.query('VOLUME STATUS')]);
+                setTimeout(() => {
+                    this.sending([this.query('INPUT STATUS')]);
+                }, 100);
+                setTimeout(() => {
+                    this.sending([this.query('VOLUME STATUS')]);
+                }, 200);
+               
+              
 
             }
 
@@ -2419,3 +2465,4 @@ class oppoPlatform {
 module.exports = (api) => {
     api.registerPlatform(PLATFORM_NAME, oppoPlatform);
 };
+
