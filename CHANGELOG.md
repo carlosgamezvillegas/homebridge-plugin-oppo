@@ -1,4 +1,7 @@
 # Changelog
+
+## [2.2.1] - 2021-01-16
+- Bug fixes
 ## [1.5.0] - 2021-01-13
 ### Changed
 - Improved Oppo status reporting
