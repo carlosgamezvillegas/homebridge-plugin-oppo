@@ -2451,7 +2451,7 @@ class oppoPlatform {
                 this.log.info('Adding new accessory:', device.oppoDisplayName);
 
                 const accessory = new this.api.platformAccessory(device.oppoDisplayName, uuid);
-                accessory.category = this.api.hap.Categories.TELEVISION;
+                accessory.category = this.api.hap.Accessory.Categories.TELEVISION;
                 accessory.context.device = device;
 
                 new oppoAccessory(this, accessory);
