@@ -1,5 +1,7 @@
 # Changelog
 
+## [2.3.1] - 2021-01-17
+- Exposes the Oppo as a TV Accessory (If you are updating the plugin you need remove it from the Home app and add it again to see the change)
 ## [2.2.1] - 2021-01-16
 - Bug fixes
 ## [1.5.0] - 2021-01-13
