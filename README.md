@@ -2,7 +2,7 @@
 <span align="center">
 
 # homebridge-oppo-udp
-## HomeKit integration for Oppo UPD 203/205
+## HomeKit integration for Oppo UDP 203/205
 
 [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
 
