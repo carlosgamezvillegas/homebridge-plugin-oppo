@@ -297,7 +297,7 @@ class oppoAccessory {
                 .setCharacteristic(this.platform.Characteristic.CurrentVisibilityState, this.platform.Characteristic.CurrentVisibilityState.SHOWN);
                 this.bluRay.getCharacteristic(this.platform.Characteristic.ConfiguredName)
                 .on('get', (callback) => {
-                    let currentValue = this.newInputName;
+                    let currentValue = this.inputName;
                     callback(null, currentValue);
     
                 });
