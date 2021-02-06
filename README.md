@@ -1,4 +1,3 @@
-
 <span align="center">
 
 # homebridge-oppo-udp
@@ -10,7 +9,7 @@
 
 # What is this?
 
-`homebrige-oppo-udp` is a plugin for homebridge to Control your Oppo 203/205 from your Home app. It should work with Oppo UDP-203 and UDP-205.
+`homebrige-oppo-udp` is a plugin for Homebridge to Control your Oppo 203/205 from your Home app. It should work with Oppo UDP-203 and UDP-205.
 
 
 ### Features
@@ -152,7 +151,9 @@ Button Name List is :
 - inputB
 - ejectDiscB
 
-Note: You can add  buttons in the "Navagation Buttons" and "other Buttons" in Settings using Hombridge UI
+Note: You can add  buttons in the "Navagation Buttons" and "other Buttons" in Settings using Homebridge UI
+- `newPlatformUUID` [optional]
+Enable this if you do not see the accessory when you try to add it to the Home App after deleting it. It will also create a different accesssory every time you chage the Name of the device in Settings. If an old accessory already exists in the Home App you will have to remove it manually. **Default: false**
 
 ## Troubleshooting
 If you have any issues with the plugin or Oppo services then you can run homebridge in debug mode, which will provide some additional information. This might be useful for debugging issues.
@@ -171,12 +172,12 @@ This will enable additional extra log which might be helpful to debug all kind o
 Note: Controls won't update if the plugin does not receive a confirmation message from the device
 
 ## Known Issues
- The Oppo player tends to disconnect from hombridge frequently after a while for no apparent reason. So, to get a stable connection again you need to do the following:
+ The Oppo player tends to disconnect from homebridge frequently after a while for no apparent reason. So, to get a stable connection again you need to do the following:
  - Disable IP Controls and Network Standby
  - Power cycle the device
  - Enable IP Controls and Network Standby
  - Keep the device turned on
- - Reset hombridge 
+ - Reset Homebridge 
 
 ## Special thanks
 To Fernando for his patience and support.
@@ -184,4 +185,3 @@ To Fernando for his patience and support.
 If you have any suggestions/improvements please let know.
 
 Enjoy!!
-
