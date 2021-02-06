@@ -42,6 +42,11 @@
         "placeholders": "EB1234213F",
         "required": false
       },
+      "newPlatformUUID": {
+        "title": "New Platform UUID",
+        "type": "boolean",
+        "required": false
+      },
       "volume": {
         "title": "Add Volume service as a lightbulb",
         "type": "boolean",
@@ -482,6 +487,18 @@
         },
         {
           "key": "ejectDiscB"
+        }
+      ]
+    },
+    {
+      "type": "fieldset",
+      "title": "Troubleshooting",
+      "expandable": true,
+      "expanded": false,
+      "items": [
+        {
+          "key": "newPlatformUUID",
+          "description": "Enable this if you do not see the accessory when you try to add it to the Home App after deleting it. It will also create a different accesssory every time you chage the Name of the device in Settings. If an old accessory already exists in the Home App you will have to remove it manually."
         }
       ]
     }
