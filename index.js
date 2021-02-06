@@ -1,19 +1,69 @@
 "use strict";
 const PLATFORM_NAME = 'oppoPlugin';
 const PLUGIN_NAME = 'homebridge-oppo-udp';
-const { throws } = require("assert");
 const net = require("net");
 const OPPO_PORT = 23;
 const timeout = 2000;
 
+module.exports = (api) => {
+    api.registerPlatform(PLATFORM_NAME, oppoPlatform);
+};
+//// Platform/////////////////////////////////////////////////////////////////////////////////////////////////
+class oppoPlatform {
+    constructor(log, config, api) {
+        this.log = log;
+        this.config = config;
+        this.api = api;
+        this.Service = this.api.hap.Service;
+        this.Characteristic = this.api.hap.Characteristic;
+        this.config.name = this.config.name || 'Oppo UDP';
+        this.config.newPlatformUUID = this.config.newPlatformUUID || false;
+        // this is used to track restored cached accessories
+        this.accessories = [];
+        this.log.debug('Finished initializing platform:', this.config.name);
+        this.api.on('didFinishLaunching', () => {
+            log.debug('didFinishLaunching callback');
+            this.iniDevice();
+        });
+    }
+    configureAccessory(accessory) {
+        this.log.info('Loading accessory from cache:', accessory.displayName);
+        this.accessories.push(accessory);
+    }
+    removeAccessory(accessory) {
+        this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+    }
+    iniDevice() {
+        if (this.config.newPlatformUUID === false) {
+            this.oppoDevice =
+            {
+                oppoUniqueId: 'AB1212D',
+                oppoDisplayName: `${this.config.name}`
+            };
+        }
+        if (this.config.newPlatformUUID === true) {
+            this.oppoDevice =
+            {
+                oppoUniqueId: `${this.config.name}AB1212D`,
+                oppoDisplayName: `${this.config.name}`
+            };
+            this.log.debug('Generationg a new UUID');
+        }
+        const uuid = this.api.hap.uuid.generate(this.oppoDevice.oppoUniqueId);
+        this.log.debug('Adding new accessory:', this.oppoDevice.oppoDisplayName);
+        const accessory = new this.api.platformAccessory(this.oppoDevice.oppoDisplayName, uuid);
+        accessory.category = this.api.hap.Accessory.Categories.TELEVISION;
+        accessory.context.device = this.oppoDevice;
+        new oppoAccessory(this, accessory);
+        this.api.publishExternalAccessories(PLUGIN_NAME, [accessory]);
+    }
+}
 class oppoAccessory {
     constructor(platform, accessory) {
         this.platform = platform;
         this.accessory = accessory;
         this.config = platform.config;
         this.OPPO_IP = this.config.ip;
-
-
         //////Initial Switch and sensors state///////////////////////////////////////////////////////////////////////////////////////////////
         this.powerState = false;
         this.playBackState = [false, false, false];
@@ -25,14 +75,12 @@ class oppoAccessory {
         this.currentMuteState = true;
         this.currentVolumeSwitch = false;
         this.inputID = 1;
-        this.mediaState = 3;
+        this.mediaState = 4;
         this.turnOffAllUsed = false;
         this.videoState = false;
         this.audioState = false;
         this.inputName = 'Blu-ray';
-
         /////MovieConstants
-
         this.currentMovieProgress = 0;
         this.currentChapterSelector = [0, 0];
         this.currentChapterTime = 0;
@@ -47,17 +95,15 @@ class oppoAccessory {
         this.chapterRemainingFirst = 0;
         this.chapterElapsedFirst = 0;
         this.chapterCounter = 0;
-        this.chapterUpdateSec = 5;
+        this.chapterUpdateSec = 1;
         this.movieType = '';
         ////Connection parameters
         this.reconnectionCounter = 0;
         this.reconnectionTry = 100;
         this.connectionLimit = false;
-        this.recoonectionWait = 10000;
+        this.reconnectionWait = 10000;
         this.firstConnection = false;
-
         //Device Information//////////////////////////////////////////////////////////////////////////////////////
-
         this.config.name = platform.config.name || 'Oppo 203';
         this.config.ip = platform.config.ip;
         this.config.manufacture = platform.config.manufacture || 'Oppo';
@@ -121,7 +167,6 @@ class oppoAccessory {
             this.platform.log('Please check your device config!');
             return;
         }
-
         // set accessory information//////////////////////////////////////////////////////////////////////////////////////////
         this.accessory.getService(this.platform.Service.AccessoryInformation)
             .setCharacteristic(this.platform.Characteristic.Manufacturer, this.config.manufacture)
@@ -140,14 +185,9 @@ class oppoAccessory {
                 this.platform.log.debug('Set Oppo Active to: ' + newValue);
                 if (newValue === 1) {
                     this.sending([this.pressedButton('POWER ON')]);
-                    //this.newPowerState(true);
-                }
-                else if (newValue === 0) {
-                    this.sending([this.pressedButton('POWER OFF')]);
-                    //this.newPowerState(false);
                 }
                 else {
-                    //
+                    this.sending([this.pressedButton('POWER OFF')]);
                 }
                 callback(null);
             });
@@ -171,13 +211,11 @@ class oppoAccessory {
                     case this.platform.Characteristic.RemoteKey.REWIND: {
                         this.platform.log.debug('set Remote Key Pressed: REWIND');
                         this.sending([this.pressedButton('REWIND')]);
-                        //this.newPlayBackState([false,false,false]);
                         break;
                     }
                     case this.platform.Characteristic.RemoteKey.FAST_FORWARD: {
                         this.platform.log.debug('set Remote Key Pressed: FAST_FORWARD');
                         this.sending([this.pressedButton('FORWARD')]);
-                        //this.newPlayBackState([false,false,false]);
                         break;
                     }
                     case this.platform.Characteristic.RemoteKey.NEXT_TRACK: {
@@ -229,11 +267,9 @@ class oppoAccessory {
                         this.platform.log.debug('set Remote Key Pressed: PLAY_PAUSE');
                         if (this.playBackState[0] === false) {
                             this.sending([this.pressedButton('PLAY')]);
-                            //this.newPlayBackState([true,false,false]);
                         }
                         else if (this.playBackState[0] === true) {
                             this.sending([this.pressedButton('PAUSE')]);
-                            //this.newPlayBackState([false,true,false]);
                         }
                         else {
                             //
@@ -246,13 +282,9 @@ class oppoAccessory {
                         break;
                     }
                 }
-
                 callback(null);
-
             });
-
         //////////////////////////////////TV Service//////////////////////////////////////////////////////////////////////////
-
         this.tvService
             .setCharacteristic(this.platform.Characteristic.ActiveIdentifier, this.inputID);
         this.tvService
@@ -267,20 +299,16 @@ class oppoAccessory {
                 }
                 else if (inputIdentifier === 1) {
                     this.sending([this.pressedButton('BLURAY INPUT')]);
-                    //this.newInputState([true, false, false]);
                 }
                 else if (inputIdentifier === 2) {
                     this.sending([this.pressedButton('HDMI IN')]);
-                    //this.newInputState([false, true, false]);
                 }
                 else if (inputIdentifier === 3) {
                     this.sending([this.pressedButton('HDMI OUT')]);
-                    //this.newInputState([false, false, true]);
                 }
                 else {
                     //
                 }
-
                 callback();
             })
             .on('get', (callback) => {
@@ -300,8 +328,6 @@ class oppoAccessory {
                 }
                 callback();
             });
-
-
         // Input Sources///////////////////////////////////////////////////////////////////////////////////////////////////////////
         this.bluRay = this.accessory.getService('Blu-ray') ||
             this.accessory.addService(this.platform.Service.InputSource, 'Blu-ray', 'YourUniqueIdentifier-1003')
@@ -314,10 +340,8 @@ class oppoAccessory {
             .on('get', (callback) => {
                 let currentValue = this.inputName;
                 callback(null, currentValue);
-
             });
         this.tvService.addLinkedService(this.bluRay);
-
         this.hdmi1 = this.accessory.getService('HDMI In') ||
             this.accessory.addService(this.platform.Service.InputSource, 'HDMI In', 'YourUniqueIdentifier-1004')
                 .setCharacteristic(this.platform.Characteristic.Identifier, 2)
@@ -326,7 +350,6 @@ class oppoAccessory {
                 .setCharacteristic(this.platform.Characteristic.InputSourceType, this.platform.Characteristic.InputSourceType.APPLICATION)
                 .setCharacteristic(this.platform.Characteristic.CurrentVisibilityState, this.platform.Characteristic.CurrentVisibilityState.SHOWN);
         this.tvService.addLinkedService(this.hdmi1);
-
         this.hdmi2 = this.accessory.getService('HDMI Out') ||
             this.accessory.addService(this.platform.Service.InputSource, 'HDMI Out', 'YourUniqueIdentifier-1005')
                 .setCharacteristic(this.platform.Characteristic.Identifier, 3)
@@ -335,49 +358,36 @@ class oppoAccessory {
                 .setCharacteristic(this.platform.Characteristic.InputSourceType, this.platform.Characteristic.InputSourceType.APPLICATION)
                 .setCharacteristic(this.platform.Characteristic.CurrentVisibilityState, this.platform.Characteristic.CurrentVisibilityState.SHOWN);
         this.tvService.addLinkedService(this.hdmi2);
-
-
         /////Media State/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
         this.tvService.getCharacteristic(this.platform.Characteristic.CurrentMediaState)
             .on('get', (callback) => {
                 let currentValue = this.mediaState;
-
                 this.platform.log.debug('Current Playback State', currentValue);
                 callback(null, currentValue);
             });
-
         this.tvService.getCharacteristic(this.platform.Characteristic.TargetMediaState)
             .on('get', (callback) => {
                 let currentValue = this.mediaState;
-                if (this.mediaState === 3) {
-                    currentValue = 0;
+                if (this.mediaState === 4) {
+                    currentValue = 2;
                 }
                 this.platform.log.debug('Current Playback State', currentValue);
-
                 callback(null, currentValue);
             })
             .on('set', (value, callback) => {
-
                 if (value === 0) {
                     this.sending([this.pressedButton('PLAY')]);
-                    //this.newPlayBackState([true, false, false])
                 }
                 else if (value === 1) {
                     this.sending([this.pressedButton('PAUSE')]);
-                    //this.newPlayBackState([false, true, false])
                 }
                 else if (value === 2) {
                     this.sending([this.pressedButton('STOP')]);
-                    //this.newPlayBackState([false, false, true])
-
                 }
                 this.platform.log.debug('Playback State set to:', value);
                 callback(null);
             });
-
         ////////Volume services for the Oppo/////////////////////////////////////////////////////////////////////////////////
-
         this.speakerService = this.accessory.getService('Oppo Volume Control') ||
             this.accessory.addService(this.platform.Service.TelevisionSpeaker, 'Oppo Volume Control', 'YourUniqueIdentifier-20');
         this.speakerService
@@ -398,7 +408,6 @@ class oppoAccessory {
             .on('get', (callback) => {
                 let currentValue = this.currentMuteState;
                 callback(null, currentValue);
-
             })
             .on('set', (newValue, callback) => {
                 let newVolume = 100;
@@ -410,49 +419,36 @@ class oppoAccessory {
                     this.sending([this.volumeChange(newVolume)]);
                 }
                 this.platform.log('set VolumeSelector => setNewValue: ' + newValue);
-                //this.newVolumeState(newVolume);
                 callback(null);
             });
         this.speakerService.addCharacteristic(this.platform.Characteristic.Volume)
             .on('get', (callback) => {
                 let currentValue = this.currentVolume;
-
                 callback(null, currentValue);
-
             })
             .on('set', (newValue, callback) => {
                 this.sending([this.volumeChange(newValue)]);
                 this.platform.log('set VolumeSelector => setNewValue: ' + newValue);
-                // this.newVolumeState(newValue);
                 callback(null);
             });
-
-
         this.tvService.addLinkedService(this.speakerService);
-
         /////Video/Movie Controls/////////////////////////////////////////////////////////////////////
-
         if (this.config.movieControl === true) {
             this.movieControlL = this.accessory.getService('Movie Progress') ||
                 this.accessory.addService(this.platform.Service.Lightbulb, 'Movie Progress', 'YourUniqueIdentifier-301');
             this.movieControlL.getCharacteristic(this.platform.Characteristic.On)
                 .on('get', (callback) => {
                     let currentValue = this.currentMovieProgressState;
-
                     callback(null, currentValue);
-
                 })
                 .on('set', (newValue, callback) => {
-
                     this.platform.log('set Movie Control => setNewValue: ' + newValue);
                     callback(null);
                 });
             this.movieControlL.addCharacteristic(new this.platform.Characteristic.Brightness())
                 .on('get', (callback) => {
-                    let currentValue = this.currentMovieProgressState;
-
+                    let currentValue = this.currentMovieProgress;
                     callback(null, currentValue);
-
                 })
                 .on('set', (newValue, callback) => {
                     let newSendValue = Math.round(newValue * (this.firstElapsedMovie + this.movieRemaining) / 100);
@@ -462,30 +458,21 @@ class oppoAccessory {
                     this.platform.log('set Movie Control => setNewValue: ' + newValue);
                     callback(null);
                 });
-
             this.chapterSelectorL = this.accessory.getService('Chapter Number') ||
                 this.accessory.addService(this.platform.Service.Lightbulb, 'Chapter Number', 'YourUniqueIdentifier-302');
             this.chapterSelectorL.getCharacteristic(this.platform.Characteristic.On)
                 .on('get', (callback) => {
-                    let currentValue = true;
-                    if (this.currentChapterSelector[0] === 0) {
-                        currentValue = false;
-                    }
-
+                    let currentValue = this.currentChapterSelectorState;
                     callback(null, currentValue);
-
                 })
                 .on('set', (newValue, callback) => {
-
                     this.platform.log('set Chapter Selector => setNewValue: ' + newValue);
                     callback(null);
                 });
             this.chapterSelectorL.addCharacteristic(new this.platform.Characteristic.Brightness())
                 .on('get', (callback) => {
                     let currentValue = this.currentChapterSelector[0];
-
                     callback(null, currentValue);
-
                 })
                 .on('set', (newValue, callback) => {
                     if (newValue > this.currentChapterSelector[1]) {
@@ -493,33 +480,23 @@ class oppoAccessory {
                     }
                     this.sending([this.chapterChange(newValue)]);
                     this.platform.log('set Chapter Selector => setNewValue: ' + newValue);
-
                     callback(null);
                 });
-
             this.chapterControlL = this.accessory.getService('Chapter Progress') ||
                 this.accessory.addService(this.platform.Service.Lightbulb, 'Chapter Progress', 'YourUniqueIdentifier-303');
             this.chapterControlL.getCharacteristic(this.platform.Characteristic.On)
                 .on('get', (callback) => {
-                    let currentValue = true;
-                    if (this.currentChapterTime === 0) {
-                        currentValue = false
-                    }
-
+                    let currentValue = this.currentChapterTimeState;
                     callback(null, currentValue);
-
                 })
                 .on('set', (newValue, callback) => {
-
                     this.platform.log('set Chapter progress => setNewValue: ' + newValue);
                     callback(null);
                 });
             this.chapterControlL.addCharacteristic(new this.platform.Characteristic.Brightness())
                 .on('get', (callback) => {
                     let currentValue = this.currentChapterTime;
-
                     callback(null, currentValue);
-
                 })
                 .on('set', (newValue, callback) => {
                     let newSendValue = Math.round(newValue * (this.chapterElapsedFirst + this.chapterRemainingFirst) / 100);
@@ -530,10 +507,10 @@ class oppoAccessory {
                     callback(null);
                 });
         }
-
         /////////////Addtional Services////////////////////////////////////////////////////////////////////////////////////
         this.service = this.accessory.getService(this.platform.Service.Switch) || this.accessory.addService(this.platform.Service.Switch);
-        this.service.setCharacteristic(this.platform.Characteristic.Name, accessory.context.device.oppoDisplayName);
+        this.service.setCharacteristic(this.platform.Characteristic.Name, `${accessory.context.device.oppoDisplayName} Power Switch`);
+        this.service.getCharacteristic(this.platform.Characteristic.Name).updateValue(`${accessory.context.device.oppoDisplayName} Power Switch`);
         this.service.getCharacteristic(this.platform.Characteristic.On)
             .on('set', this.setOn.bind(this))
             .on('get', this.getOn.bind(this));
@@ -552,10 +529,7 @@ class oppoAccessory {
         this.stop.getCharacteristic(this.platform.Characteristic.On)
             .on('get', this.stopSwitchStateGet.bind(this))
             .on('set', this.stopSwitchStateSet.bind(this));
-
-
         //Video and  audio Sensors///////////////////////////////////////////////////////////////////////////
-
         this.dolbyVision = this.accessory.getService('Dolby Vision Video') ||
             this.accessory.addService(this.platform.Service.MotionSensor, 'Dolby Vision Video', 'YourUniqueIdentifier-1');
         this.hdr10 = this.accessory.getService('HDR 10 Video') ||
@@ -566,8 +540,6 @@ class oppoAccessory {
             this.accessory.addService(this.platform.Service.MotionSensor, 'Dolby Atmos Sound', 'YourUniqueIdentifier-8');
         this.dtsSound = this.accessory.getService('DTS') ||
             this.accessory.addService(this.platform.Service.MotionSensor, 'DTS', 'YourUniqueIdentifier-9');
-
-
         ///////////////////////////////////Input buttons//////////////////////////////////////////////////////////////////////////
         if (this.config.inputButtons === true) {
             this.bluRayInput = this.accessory.getService('Blu-ray Input') ||
@@ -582,17 +554,14 @@ class oppoAccessory {
                     this.platform.log.debug('Blu-ray Input set to:', value);
                     if (value === true) {
                         this.sending([this.pressedButton('BLURAY INPUT')]);
-                        //this.newInputState([true,false,false]);
                     }
                     callback(null);
                 });
-
             this.hdmiIn = this.accessory.getService('HDMI In Input') ||
                 this.accessory.addService(this.platform.Service.Switch, 'HDMI In Input', 'YourUniqueIdentifier-24');
             this.hdmiIn.getCharacteristic(this.platform.Characteristic.On)
                 .on('get', (callback) => {
                     this.platform.log.debug('HDMI In Get State');
-                    // set this to a valid value for On
                     let currentValue = this.inputState[1];
                     callback(null, currentValue);
                 })
@@ -600,7 +569,6 @@ class oppoAccessory {
                     this.platform.log.debug('HDMI in set to:', value);
                     if (value === true) {
                         this.sending([this.pressedButton('HDMI IN')]);
-                        //this.newInputState([false,true,false]);
                     }
                     callback(null);
                 });
@@ -616,27 +584,18 @@ class oppoAccessory {
                     this.platform.log.debug('HDMI Out set to:', value);
                     if (value === true) {
                         this.sending([this.pressedButton('HDMI OUT')]);
-                        //this.newInputState([false,false,true]);
                     }
                     callback(null);
                 });
-
         }
-
         //////Volume control Service as lightbulb////////////////////////////////////////////////////////////////////////////
         if (this.config.volume === true) {
-
             this.volumeDimmer = this.accessory.getService('Oppo Volume') ||
                 this.accessory.addService(this.platform.Service.Lightbulb, 'Oppo Volume', 'YourUniqueIdentifier-98');
             this.volumeDimmer.getCharacteristic(this.platform.Characteristic.On)
                 .on('get', (callback) => {
-                    let currentValue = true;
-                    if (this.currentVolume === 0) {
-                        currentValue = false
-                    }
-
+                    let currentValue = this.currentVolumeSwitch;
                     callback(null, currentValue);
-
                 })
                 .on('set', (newValue, callback) => {
                     let newVolume = 100;
@@ -647,28 +606,23 @@ class oppoAccessory {
                         newVolume = 0;
                         this.sending([this.volumeChange(newVolume)]);
                     }
-
                     this.platform.log('set VolumeSelector => setNewValue: ' + newValue);
-                    //this.newVolumeState(newVolume);
                     callback(null);
                 });
 
             this.volumeDimmer.addCharacteristic(new this.platform.Characteristic.Brightness())
                 .on('get', (callback) => {
                     let currentValue = this.currentVolume;
-
                     callback(null, currentValue);
-
                 })
                 .on('set', (newValue, callback) => {
                     this.sending([this.volumeChange(newValue)]);
                     this.platform.log('set VolumeSelector => setNewValue: ' + newValue);
-                    //this.newVolumeState(newValue);
+
                     callback(null);
                 });
         }
         ////other Controls /////////////////////////////////////////////////////////
-
         if (this.config.cursorUpB === true) {
             this.cursorUp = this.accessory.getService('Cursor Up') ||
                 this.accessory.addService(this.platform.Service.Switch, 'Cursor Up', 'YourUniqueIdentifier-31');
@@ -764,7 +718,7 @@ class oppoAccessory {
                 this.accessory.addService(this.platform.Service.Switch, 'Menu', 'YourUniqueIdentifier-36');
             this.menu.getCharacteristic(this.platform.Characteristic.On)
                 .on('get', (callback) => {
-                    this.platform.log.debug('TMenu GET On');
+                    this.platform.log.debug('Menu GET On');
                     let currentValue = false;
                     callback(null, currentValue);
                 })
@@ -866,7 +820,6 @@ class oppoAccessory {
                     this.homeMenu.updateCharacteristic(this.platform.Characteristic.On, false);
                     callback(null);
                 });
-
         }
         if (this.config.infoB === true) {
             this.infoButton = this.accessory.getService('Info') ||
@@ -975,12 +928,9 @@ class oppoAccessory {
                     this.popUpMenu.updateCharacteristic(this.platform.Characteristic.On, false);
                     callback(null);
                 });
-
         }
         //////Additional Media Buttons/////////////////////////////////////////////////
-
         if (this.config.mediaButtons === true) {
-
             this.previous = this.accessory.getService('Previous') ||
                 this.accessory.addService(this.platform.Service.Switch, 'Previous', 'YourUniqueIdentifier-38');
             this.previous.getCharacteristic(this.platform.Characteristic.On)
@@ -997,7 +947,6 @@ class oppoAccessory {
                     this.previous.updateCharacteristic(this.platform.Characteristic.On, false);
                     callback(null);
                 });
-
             this.next = this.accessory.getService('Next') ||
                 this.accessory.addService(this.platform.Service.Switch, 'Next', 'YourUniqueIdentifier-39');
             this.next.getCharacteristic(this.platform.Characteristic.On)
@@ -1014,7 +963,6 @@ class oppoAccessory {
                     this.next.updateCharacteristic(this.platform.Characteristic.On, false);
                     callback(null);
                 });
-
             this.rewindButton = this.accessory.getService('Rewind') ||
                 this.accessory.addService(this.platform.Service.Switch, 'Rewind', 'YourUniqueIdentifier-46');
             this.rewindButton.getCharacteristic(this.platform.Characteristic.On)
@@ -1031,7 +979,6 @@ class oppoAccessory {
                     this.rewindButton.updateCharacteristic(this.platform.Characteristic.On, false);
                     callback(null);
                 });
-
             this.forwardButton = this.accessory.getService('Forward') ||
                 this.accessory.addService(this.platform.Service.Switch, 'Forward', 'YourUniqueIdentifier-80');
             this.forwardButton.getCharacteristic(this.platform.Characteristic.On)
@@ -1048,10 +995,8 @@ class oppoAccessory {
                     this.forwardButton.updateCharacteristic(this.platform.Characteristic.On, false);
                     callback(null);
                 });
-
         }
         /////The rest of the buttons///////////////////////////////////////////////////////////////////
-
         if (this.config.dimmerB === true) {
             this.dimmer = this.accessory.getService('Dimmer') ||
                 this.accessory.addService(this.platform.Service.Switch, 'Dimmer', 'YourUniqueIdentifier-47');
@@ -1143,7 +1088,6 @@ class oppoAccessory {
                 });
         }
         if (this.config.yellowB === true) {
-
             this.yellow = this.accessory.getService('Yellow') ||
                 this.accessory.addService(this.platform.Service.Switch, 'Yellow', 'YourUniqueIdentifier-56');
             this.yellow.getCharacteristic(this.platform.Characteristic.On)
@@ -1431,7 +1375,6 @@ class oppoAccessory {
                     this.resolutionHold.updateCharacteristic(this.platform.Characteristic.On, false);
                     callback(null);
                 });
-
         }
         if (this.config.avSyncB === true) {
             this.avSync = this.accessory.getService('AV SYNC') ||
@@ -1468,7 +1411,6 @@ class oppoAccessory {
                     this.gaplessPlay.updateCharacteristic(this.platform.Characteristic.On, false);
                     callback(null);
                 });
-
         }
         if (this.config.inputB === true) {
             this.input = this.accessory.getService('Input') ||
@@ -1506,11 +1448,8 @@ class oppoAccessory {
                     this.ejectDisc.updateCharacteristic(this.platform.Characteristic.On, false);
                     callback(null);
                 });
-
-
         }
         ///////////////Clean up. Delete services not in used
-        ////MovieRemove
         if (this.config.movieControl === false) {
             this.accessory.removeService(this.movieControlL);
             this.accessory.removeService(this.chapterControlL);
@@ -1659,7 +1598,6 @@ class oppoAccessory {
         }
         //////////////////Connecting to Oppo
         this.netConnect();
-
         //syncing//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         setInterval(() => {
             if (this.reconnectionCounter > this.reconnectionTry) {
@@ -1684,35 +1622,36 @@ class oppoAccessory {
             this.speakerService.updateCharacteristic(this.platform.Characteristic.Volume, this.currentVolume);
             this.speakerService.updateCharacteristic(this.platform.Characteristic.Mute, this.currentMuteState);
             this.bluRay.updateCharacteristic(this.platform.Characteristic.ConfiguredName, this.inputName)
+
             if (this.config.inputButtons === true) {
                 this.bluRayInput.updateCharacteristic(this.platform.Characteristic.On, this.inputState[0]);
                 this.hdmiIn.updateCharacteristic(this.platform.Characteristic.On, this.inputState[1]);
                 this.hdmiOut.updateCharacteristic(this.platform.Characteristic.On, this.inputState[2]);
             }
+
             if (this.config.volume === true) {
                 this.volumeDimmer.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentVolume);
                 this.volumeDimmer.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentVolume);
                 this.volumeDimmer.updateCharacteristic(this.platform.Characteristic.On, this.currentVolumeSwitch);
             }
+
             if (this.config.movieControl === true) {
                 this.chapterSelectorL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentChapterSelector[0]);
                 this.chapterSelectorL.updateCharacteristic(this.platform.Characteristic.On, this.currentChapterSelectorState);
                 this.chapterControlL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentChapterTime);
-                this.chapterControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentchapterTimeState);
+                this.chapterControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentChapterTimeState);
                 this.movieControlL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentMovieProgress);
                 this.movieControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentMovieProgressState);
 
             }
+
         }, this.config.pollingInterval);
 
     }
-
     //////////////Create Client//////////////////////////////////////////////////////////////////////////
-
     netConnect() {
         ///First instruction to be sent when the conneciton is made
         this.key = this.query('VERBOSE MODE');
-
         ////Creating the connection
         this.client = new net.Socket();
         //////Connect to client
@@ -1722,7 +1661,6 @@ class oppoAccessory {
             this.client.write(this.key);
             this.firstConnection = true;
         });
-
         /////Receiving Data
         this.client.on('data', (data) => {
             clearTimeout(timer);
@@ -1737,6 +1675,15 @@ class oppoAccessory {
                 this.platform.log.debug(`[Response] ${data}`);
             }
             else if (data.includes("QPW OK OFF")) {
+                this.platform.log.debug(`[Response] ${data}`);
+            }
+            else if (data.includes("QCH")) {
+                this.platform.log.debug(`[Response] ${data}`);
+            }
+            else if (data.includes("QCE")) {
+                this.platform.log.debug(`[Response] ${data}`);
+            }
+            else if (data.includes("QRE")) {
                 this.platform.log.debug(`[Response] ${data}`);
             }
             else {
@@ -1762,15 +1709,13 @@ class oppoAccessory {
 
                 });
 
-            }, this.recoonectionWait);
+            }, this.reconnectionWait);
             if (this.reconnectionCounter > 100) {
                 if (this.turnOffAllUsed === false) {
                     this.turnOffAll()
                     this.turnOffAllUsed = true;
                 }
-
             }
-
         });
         ////Connection Closed
         this.client.on('close', () => {
@@ -1788,7 +1733,7 @@ class oppoAccessory {
                     this.client.write(this.key);
                     this.platform.log.debug(`[Sending] ${JSON.stringify(this.key)}`);
                 });
-            }, this.recoonectionWait);
+            }, this.reconnectionWait);
             if (this.reconnectionCounter > 100) {
                 if (this.turnOffAllUsed === false) {
                     this.turnOffAll()
@@ -1801,15 +1746,12 @@ class oppoAccessory {
             this.platform.log.debug('[ERROR] Attempt at connection exceeded timeout value');
             // client.destroy();
         }, timeout);
-
     }
     ///////Handlers////////////////////////////////////////////////////////////////////////////////////////
     setOn(value, callback) {
         let oppoState = value;
         if (oppoState === true) {
-            // this.newPowerState(true);
             this.sending([this.pressedButton('POWER ON')]);
-
         }
         else if (oppoState === false) {
             //this.newPowerState(false);
@@ -1819,10 +1761,8 @@ class oppoAccessory {
             //
         }
         this.platform.log.debug('Set Power to ->', value);
-
         callback(null);
     }
-
     getOn(callback) {
         let isOn = false;
         isOn = this.powerState;
@@ -1835,15 +1775,10 @@ class oppoAccessory {
         let currentValue = this.playBackState[0];
         callback(null, currentValue);
     }
-
     playSwitchStateSet(value, callback) {
         this.platform.log.debug('Play set to:', value);
         if (value === true) {
             this.sending([this.pressedButton('PLAY')]);
-        }
-
-        else {
-            //
         }
         callback(null);
     }
@@ -1854,26 +1789,19 @@ class oppoAccessory {
         let currentValue = this.playBackState[1];
         callback(null, currentValue);
     }
-
     pauseSwitchStateSet(value, callback) {
         this.platform.log.debug('Pause set to', value);
         if (value === true) {
             this.sending([this.pressedButton('PAUSE')]);
         }
-
-        else {
-            //
-        }
         callback(null);
     }
     /////////////////////////////////////////////////////////////////////////////////////stop
-
     stopSwitchStateGet(callback) {
         this.platform.log.debug('Stop State');
         let currentValue = this.playBackState[2];
         callback(null, currentValue);
     }
-
     stopSwitchStateSet(value, callback) {
         this.platform.log.debug('Stop set to:', value);
         if (value === true) {
@@ -1893,18 +1821,24 @@ class oppoAccessory {
             else if (press[i].includes("QPW")) {
                 this.platform.log.debug(`[Sending] ${JSON.stringify(press[i])}`);
             }
+            else if (press[i].includes("QCE")) {
+                this.platform.log.debug(`[Sending] ${JSON.stringify(press[i])}`);
+            }
+            else if (press[i].includes("QCH")) {
+                this.platform.log.debug(`[Sending] ${JSON.stringify(press[i])}`);
+            }
+            else if (press[i].includes("QRE")) {
+                this.platform.log.debug(`[Sending] ${JSON.stringify(press[i])}`);
+            }
             else { this.platform.log(`[Sending] ${JSON.stringify(press[i])}`); }
             i += 1;
         }
     }
-
     //////////Current Status//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
     newInputName(newName) {
         this.inputName = newName;
         this.bluRay.updateCharacteristic(this.platform.Characteristic.ConfiguredName, this.inputName)
     }
-
     newChapter(newChapter) {
         if (newChapter === 0) {
             this.currentChapterSelectorState = false;
@@ -1927,18 +1861,18 @@ class oppoAccessory {
     }
     newChapterTime(newTime) {
         if (newTime === 0) {
-            this.currentchapterTimeState = false;
+            this.currentChapterTimeState = false;
             this.currentChapterTime = 0;
         }
         if (newTime !== 0) {
-            this.currentchapterTimeState = true;
+            this.currentChapterTimeState = true;
         }
         if (this.chapterElapsedFirst + this.chapterRemainingFirst !== 0) {
             this.currentChapterTime = Math.round(newTime * 100 / (this.chapterElapsedFirst + this.chapterRemainingFirst));
         }
         if (this.currentChapterTime > 100) { this.currentChapterTime = 100 }
         this.chapterControlL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentChapterTime);
-        this.chapterControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentchapterTimeState);
+        this.chapterControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentChapterTimeState);
     }
     newMovieTime(newMovieTime) {
         if (newMovieTime === 0) {
@@ -1978,7 +1912,7 @@ class oppoAccessory {
             this.mediaState = 2;
         }
         if (this.playBackState[0] === false && this.playBackState[1] === false && this.playBackState[2] === false) {
-            this.mediaState = 3;
+            this.mediaState = 4;
         }
         this.play.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[0]);
         this.pause.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[1]);
@@ -2019,7 +1953,6 @@ class oppoAccessory {
             this.hdmiOut.updateCharacteristic(this.platform.Characteristic.On, this.inputState[2]);
         }
     }
-
     newVolumeState(newVolumeNum) {
         this.currentVolume = newVolumeNum;
         if (newVolumeNum === 0) {
@@ -2040,8 +1973,6 @@ class oppoAccessory {
             this.volumeDimmer.updateCharacteristic(this.platform.Characteristic.On, this.currentVolumeSwitch);
         }
     }
-
-
     ///Event decoder///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     eventDecoder(dataReceived) {
         const str = (`${dataReceived}`);
@@ -2053,7 +1984,9 @@ class oppoAccessory {
             }
             /////////////////////////////////Verbose Mode/////////////////////////////////////////
             else if (res[i].includes('QVM OK 2') || res[i].includes('SVM OK 2')) {
-                if (this.config.movieControl === false) { this.sending([this.query('POWER STATUS')]); }
+                if (this.config.movieControl === false) {
+                    this.sending([this.query('POWER STATUS')]);
+                }
                 else { this.sending([this.pressedButton('VERBOSE MODE 3')]); }
             }
             else if (res[i].includes('QVM OK 3') || res[i].includes('SVM OK 3')) {
@@ -2071,7 +2004,6 @@ class oppoAccessory {
                 }
                 else { this.sending([this.pressedButton('VERBOSE MODE 3')]); }
             }
-
             ///////////////Power Status/////////////////////////////////////////////////////////////////////
             else if (res[i].includes('OK OFF') || res[i].includes('POF OK OFF') || res[i].includes('UPW 0')) {
                 this.reconnectionCounter = 0;
@@ -2087,29 +2019,51 @@ class oppoAccessory {
                     this.newChapter(0);
                     this.newMovieTime(0);
                     this.newChapterTime(0);
-
                 }
                 this.newInputState([false, false, false]);
-                this.firstConnection === false;
             }
             else if (res[i].includes('UPW 1')) {
                 this.newPowerState(true);
-                this.firstConnection === false;
+                if (this.firstConnection === true) {
+                    this.sending([this.pressedButton('RESET')]);
+                    setTimeout(() => {
+                        this.sending([this.query('INPUT STATUS')]);
+                    }, 4000);
+                    setTimeout(() => {
+                        this.sending([this.query('VOLUME STATUS')]);
+                    }, 4200);
+                    setTimeout(() => {
+                        this.sending([this.query('HDR STATUS')]);
+                    }, 4300);
+                }
             }
             else if (res[i].includes('PON OK')) {
                 this.reconnectionCounter = 0;
                 this.newPowerState(true);
+                if (this.firstConnection === true) {
+                    this.sending([this.pressedButton('RESET')]);
+                    setTimeout(() => {
+                        this.sending([this.query('INPUT STATUS')]);
+                    }, 4000);
+                    setTimeout(() => {
+                        this.sending([this.query('VOLUME STATUS')]);
+                    }, 4200);
+                    setTimeout(() => {
+                        this.sending([this.query('HDR STATUS')]);
+                    }, 4300);
+                }
             }
 
             else if (res[i].includes('OK ON')) {
                 this.newPowerState(true);
                 if (this.firstConnection === true) {
-                    this.platform.log('First Update');
+                    this.platform.log.debug('First Update');
+                    this.sending([this.pressedButton('RESET')]);
                     setTimeout(() => {
-                        this.sending(this.queryKeys(['PLAYBACK STATUS']));
+                        this.sending([this.query('PLAYBACK STATUS')]);
                     }, 200);
                     setTimeout(() => {
-                        this.sending(this.queryKeys(['HDR STATUS']));
+                        this.sending([this.query('HDR STATUS')]);
                     }, 300);
                     setTimeout(() => {
                         this.sending([this.query('INPUT STATUS')]);
@@ -2117,7 +2071,6 @@ class oppoAccessory {
                     setTimeout(() => {
                         this.sending([this.query('VOLUME STATUS')]);
                     }, 500);
-                    this.firstConnection = false;
                 }
             }
             //////////////Movie and chapter progress/////////////////////////////////////////////////
@@ -2126,25 +2079,27 @@ class oppoAccessory {
                 let chapter = parseInt(updateString[2], 10);
                 let time = this.timeToSeconds(updateString[4]);
                 this.movieType = updateString[3];
+                if (time === 0) {
+                    this.currentMovieProgressFirst = true;
+                    this.chapterFirstUpdate = true;
+                }
                 this.chapterCounter += 1;
                 if (this.reconnectionCounter < this.reconnectionTry) {
                     if (this.currentMovieProgressFirst === true) {
                         this.firstElapsedMovie = time;
                         this.reconnectionCounter += 1;
-
                         setTimeout(() => {
                             this.sending([this.query('CHAPTER NUMBER')]);
                         }, 100);
                         setTimeout(() => {
                             this.sending([this.query('MEDIA TIME REMAINING')]);
                         }, 300);
-
                     }
                     if (this.currentMovieProgressFirst === false) {
                         this.newChapter(chapter);
                         this.newMovieTime(time);
                     }
-                    if (this.chapterCounter > 10) {
+                    if (this.chapterCounter >= this.chapterUpdateSec) {
                         setTimeout(() => {
                             this.sending([this.query('CHAPTER TIME ELAPSED')]);
                         }, 500);
@@ -2172,7 +2127,6 @@ class oppoAccessory {
             else if (res[i].includes('QRE')) {
                 this.currentMovieProgressFirst = false;
                 this.movieRemaining = this.timeToSeconds(this.justNumber(res[i]));
-
             }
             else if (res[i].includes('QCH')) {
                 let numberArray = this.justNumber(res[i]).split('/')
@@ -2181,27 +2135,6 @@ class oppoAccessory {
                 this.reconnectionCounter = 0;
                 this.newChapter(number);
             }
-
-            else if (res[i].includes('DISC')) {
-                this.newPowerState(true);
-                this.newPlayBackState([false, false, false]);
-                this.currentMovieProgressFirst = true;
-                this.chapterFirstUpdate = true;
-                this.newChapter(0);
-                this.newMovieTime(0);
-                this.newChapterTime(0);
-                this.newInputName('Blu-ray');
-                setTimeout(() => {
-                    this.sending(this.queryKeys(['HDR STATUS']));
-                }, 100);
-                setTimeout(() => {
-                    this.sending([this.query('INPUT STATUS')]);
-                }, 200);
-                setTimeout(() => {
-                    this.sending([this.query('VOLUME STATUS')]);
-                }, 300);
-            }
-
             ////////////////Volume state update///////////////////////////////////////////////////////////
             else if (res[i].includes('UVL') || res[i].includes('QVL')) {
                 if (res[i].includes('UMT')) {
@@ -2219,18 +2152,23 @@ class oppoAccessory {
                 }
             }
             //////Playback update/////////////////////////////////////////////////////////////
-            else if (res[i].includes('OK PLAY')) {
+            else if (res[i].includes('OK PLAY')||res[i].includes('UPL PLAY')) {
                 this.newPlayBackState([true, false, false]);
-                setTimeout(() => {
-                    this.sending([this.query('MEDIA NAME')]);
-                }, 3000);
+                if (!this.movieType.includes('T')) {
+                    setTimeout(() => {
+                        this.sending([this.query('MEDIA NAME')]);
+                    }, 3000);
+                }
             }
             else if (res[i].includes('QFN OK')) {
                 let nameArray = res[i].split(' ')
-                this.newInputName(nameArray[2]);
-            }
-            else if (res[i].includes('UPL PLAY')) {
-                this.newPlayBackState([true, false, false]);
+                let newVideoName=nameArray[2]; 
+                i=3;
+                while(nameArray.length>i){
+                    newVideoName  +=  ` ${nameArray[i]}`;
+                    i+=1;
+                    }
+                this.newInputName(newVideoName);
             }
             else if (res[i].includes('OK PAUSE') || res[i].includes('UPL PAUS')) {
                 this.newPlayBackState([false, true, false]);
@@ -2254,6 +2192,7 @@ class oppoAccessory {
                 this.newPlayBackState([false, false, false]);
             }
             else if (res[i].includes('UPL HOME') || res[i].includes('OK HOME')) {
+                this.newPowerState(true);
                 this.newPlayBackState([false, false, false]);
                 this.newHDRState([false, false, true]);
                 this.newAudioType([false, false]);
@@ -2266,14 +2205,20 @@ class oppoAccessory {
                     this.newMovieTime(0);
                     this.newChapterTime(0);
                 }
-                if (this.firstConnection !== false) {
+                if (this.firstConnection === true) {
+                    this.sending([this.pressedButton('RESET')]);
                     setTimeout(() => {
                         this.sending([this.query('INPUT STATUS')]);
                     }, 100);
                     setTimeout(() => {
                         this.sending([this.query('VOLUME STATUS')]);
                     }, 200);
+                    setTimeout(() => {
+                        this.sending([this.query('HDR STATUS')]);
+                    }, 300);
+
                 }
+
             }
             ///////////////////Video and sound update///////////////////////////////////////////////////
             else if (res[i].includes('U3D 2D')) {
@@ -2281,23 +2226,25 @@ class oppoAccessory {
                 this.chapterFirstUpdate = true;
                 this.sending([this.pressedButton('RESET')]);
                 setTimeout(() => {
-                    this.sending(this.queryKeys(['PLAYBACK STATUS']));
+                    this.sending([this.query('PLAYBACK STATUS')]);
                 }, 200);
 
                 setTimeout(() => {
-                    this.sending(this.queryKeys(['HDR STATUS']));
+                    this.sending([this.query('HDR STATUS')]);
                 }, 2000);
-
             }
             else if (res[i].includes('OK HDR')) {
                 this.newHDRState([false, true, false]);
+                this.firstConnection = false;
             }
             else if (res[i].includes('OK SDR')) {
                 this.newHDRState([false, false, true]);
                 this.reconnectionCounter = 0;
+                this.firstConnection = false;
             }
             else if (res[i].includes('OK DOV')) {
                 this.newHDRState([true, false, false]);
+                this.firstConnection = false;
             }
             ////////////////Input Update/////////////////////////////////////////////////////////
             else if (res[i].includes('BD-PLAYER')) {
@@ -2324,14 +2271,12 @@ class oppoAccessory {
                 || res[i].includes('UAT MP') || res[i].includes('UAT CD') || res[i].includes('UAT UN')) {
                 this.newAudioType([false, false]);
             }
-
             else {
                 //
             }
             i += 1;
         }
     }
-
     ///Query////////////////////////////////////////////////////////////////////////////////////////////////////
     queryKeys(buttons) {
         buttons.length;
@@ -2587,9 +2532,7 @@ class oppoAccessory {
         key += '\r';
         return key;
     }
-
     /////////Data Management/////////////////////////////////////////////////////////////
-
     timeToSeconds(hms) {
         let a = hms.split(':');
         let seconds = (+a[0]) * 60 * 60 + (+a[1]) * 60 + (+a[2]);
@@ -2607,7 +2550,6 @@ class oppoAccessory {
         return timeString
     }
     /////Volume, chapter, Movie time change //////////////////////////////////////////////
-
     volumeChange(number) {
         let key;
         key = '#SVL ';
@@ -2615,7 +2557,6 @@ class oppoAccessory {
         key += '\r';
         return key;
     }
-
     chapterChange(number) {
         let key;
         key = '#SRH C';
@@ -2645,7 +2586,6 @@ class oppoAccessory {
         }
         key += number
         key += '\r';
-
         return key;
     }
     ////Update instructions
@@ -2681,62 +2621,3 @@ class oppoAccessory {
         }
     }
 }
-//// Platform/////////////////////////////////////////////////////////////////////////////////////////////////
-class oppoPlatform {
-    constructor(log, config, api) {
-        this.log = log;
-        this.config = config;
-        this.api = api;
-        this.Service = this.api.hap.Service;
-        this.Characteristic = this.api.hap.Characteristic;
-        this.config.name = this.config.name || 'Oppo UDP';
-        // this is used to track restored cached accessories
-        this.accessories = [];
-        this.log.debug('Finished initializing platform:', this.config.name);
-        this.api.on('didFinishLaunching', () => {
-            log.debug('didFinishLaunching callback');
-            this.discoverDevices();
-        });
-    }
-    configureAccessory(accessory) {
-        this.log.info('Loading accessory from cache:', accessory.displayName);
-        this.accessories.push(accessory);
-    }
-    discoverDevices() {
-        const oppoDevices = [
-            {
-                oppoUniqueId: 'AB1212D',
-                oppoDisplayName: `${this.config.name}`,
-            },
-        ];
-        // loop over the discovered devices and register each one if it has not already been registered
-        for (const device of oppoDevices) {
-            const uuid = this.api.hap.uuid.generate(device.oppoUniqueId);
-            const existingAccessory = this.accessories.find(accessory => accessory.UUID === uuid);
-            if (existingAccessory) {
-                if (device) {
-                    this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName);
-                    existingAccessory.context.device = device;
-                    this.api.updatePlatformAccessories([existingAccessory]);
-                    new oppoAccessory(this, existingAccessory);
-                    this.api.updatePlatformAccessories([existingAccessory]);
-                }
-                else if (!device) {
-                    this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [existingAccessory]);
-                    this.log.info('Removing existing accessory from cache:', existingAccessory.displayName);
-                }
-            }
-            else {
-                this.log.info('Adding new accessory:', device.oppoDisplayName);
-                const accessory = new this.api.platformAccessory(device.oppoDisplayName, uuid);
-                accessory.category = this.api.hap.Accessory.Categories.TELEVISION;
-                accessory.context.device = device;
-                new oppoAccessory(this, accessory);
-                this.api.publishExternalAccessories(PLUGIN_NAME, [accessory]);
-            }
-        }
-    }
-}
-module.exports = (api) => {
-    api.registerPlatform(PLATFORM_NAME, oppoPlatform);
-};
