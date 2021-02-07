@@ -1,4 +1,6 @@
 # Changelog
+## [2.4.7] - 2021-02-06
+- Bug fixes
 ## [2.4.6] - 2021-02-06
 - Bugs fixes to the Movie and Chapter Progress status
 ### Added
