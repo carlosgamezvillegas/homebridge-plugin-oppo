@@ -1666,7 +1666,7 @@ class oppoAccessory {
             clearTimeout(timer);
             this.eventDecoder(data);
             if (data.includes("UTC")) {
-                this.platform.log.debug(`[Response] ${data}`);
+                this.platform.log(`[Response] ${data}`);
             }
             else if (data.includes("SVM")) {
                 this.platform.log.debug(`[Response] ${data}`);
@@ -1959,7 +1959,7 @@ class oppoAccessory {
             this.currentMuteState = true;
             this.currentVolumeSwitch = false;
         }
-        if (newVolumeNum != 0) {
+        if (newVolumeNum !== 0) {
             this.currentMuteState = false;
             this.currentVolumeSwitch = true;
         }
@@ -2566,7 +2566,7 @@ class oppoAccessory {
     }
     chapterTime(number) {
         let key;
-        if (!this.movieType === 'C') {
+        if (!this.movieType.includes('C')) {
             key = '#SRH C ';
         }
         else {
@@ -2578,7 +2578,7 @@ class oppoAccessory {
     }
     movieTime(number) {
         let key;
-        if (!this.movieType === 'C') {
+        if (!this.movieType.includes('C')) {
             key = '#SRH ';
         }
         else {
