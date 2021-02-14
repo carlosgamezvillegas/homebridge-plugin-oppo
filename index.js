@@ -67,11 +67,12 @@ class oppoAccessory {
         //////Initial Switch and sensors state///////////////////////////////////////////////////////////////////////////////////////////////
         this.powerState = false;
         this.playBackState = [false, false, false];
-        this.inputState = [false, false, false];
+        this.inputState = [false, false, false, false, false, false];
         this.HDROutput = [false, false, false];
         this.audioType = [false, false];
-        this.powerState_TV = 0;
+        this.powerStateTV = 0;
         this.currentVolume = 0;
+        this.targetVolume = 100;
         this.currentMuteState = true;
         this.currentVolumeSwitch = false;
         this.inputID = 1;
@@ -99,8 +100,9 @@ class oppoAccessory {
         this.movieType = '';
         ////Connection parameters
         this.reconnectionCounter = 0;
-        this.reconnectionTry = 100;
+        this.reconnectionTry = 10;
         this.connectionLimit = false;
+        this.connectionLimitStatus = 0;
         this.reconnectionWait = 10000;
         this.firstConnection = false;
         //Device Information//////////////////////////////////////////////////////////////////////////////////////
@@ -111,6 +113,7 @@ class oppoAccessory {
         this.config.modelName = platform.config.modelName || 'UDP-203';
         this.config.serialN = platform.config.serialN || 'B210U71647033894';
         this.config.inputButtons = platform.config.inputButtons || false;
+        this.config.oppo205 = platform.config.oppo205 || false;
         this.config.volume = platform.config.volume || false;
         this.config.mediaButtons = platform.config.mediaButtons || false;
         this.config.cursorUpB = platform.config.cursorUpB || false;
@@ -292,10 +295,10 @@ class oppoAccessory {
             .on('set', (inputIdentifier, callback) => {
                 this.platform.log.debug('Active Identifier set to:', inputIdentifier);
                 if (inputIdentifier === 999999) {
-                    this.newInputState([false, false, false]);
+                    this.newInputState([false, false, false, false, false, false]);
                 }
                 if (inputIdentifier === 0) {
-                    this.newInputState([false, false, false]);
+                    this.newInputState([false, false, false, false, false, false]);
                 }
                 else if (inputIdentifier === 1) {
                     this.sending([this.pressedButton('BLURAY INPUT')]);
@@ -305,6 +308,15 @@ class oppoAccessory {
                 }
                 else if (inputIdentifier === 3) {
                     this.sending([this.pressedButton('HDMI OUT')]);
+                }
+                else if (inputIdentifier === 4) {
+                    this.sending([this.pressedButton('OPTICAL INPUT')]);
+                }
+                else if (inputIdentifier === 5) {
+                    this.sending([this.pressedButton('COAXIAL INPUT')]);
+                }
+                else if (inputIdentifier === 6) {
+                    this.sending([this.pressedButton('USB AUDIO INPUT')]);
                 }
                 else {
                     //
@@ -358,6 +370,33 @@ class oppoAccessory {
                 .setCharacteristic(this.platform.Characteristic.InputSourceType, this.platform.Characteristic.InputSourceType.APPLICATION)
                 .setCharacteristic(this.platform.Characteristic.CurrentVisibilityState, this.platform.Characteristic.CurrentVisibilityState.SHOWN);
         this.tvService.addLinkedService(this.hdmi2);
+        this.opticalIn = this.accessory.getService('Optical In') ||
+            this.accessory.addService(this.platform.Service.InputSource, 'Optical In', 'YourUniqueIdentifier-4005')
+                .setCharacteristic(this.platform.Characteristic.Identifier, 4)
+                .setCharacteristic(this.platform.Characteristic.ConfiguredName, 'Optical In')
+                .setCharacteristic(this.platform.Characteristic.IsConfigured, this.platform.Characteristic.IsConfigured.CONFIGURED)
+                .setCharacteristic(this.platform.Characteristic.InputSourceType, this.platform.Characteristic.InputSourceType.HDMI)
+                .setCharacteristic(this.platform.Characteristic.TargetVisibilityState, this.config.oppo205 ? this.platform.Characteristic.TargetVisibilityState.SHOWN : this.platform.Characteristic.TargetVisibilityState.HIDDEN)
+                .setCharacteristic(this.platform.Characteristic.CurrentVisibilityState, this.config.oppo205 ? this.platform.Characteristic.CurrentVisibilityState.SHOWN : this.platform.Characteristic.CurrentVisibilityState.HIDDEN);
+        this.tvService.addLinkedService(this.opticalIn);
+        this.coaxialIn = this.accessory.getService('Coaxial In') ||
+            this.accessory.addService(this.platform.Service.InputSource, 'Coaxial In', 'YourUniqueIdentifier-4006')
+                .setCharacteristic(this.platform.Characteristic.Identifier, 5)
+                .setCharacteristic(this.platform.Characteristic.ConfiguredName, 'Coaxial In')
+                .setCharacteristic(this.platform.Characteristic.IsConfigured, this.platform.Characteristic.IsConfigured.CONFIGURED)
+                .setCharacteristic(this.platform.Characteristic.InputSourceType, this.platform.Characteristic.InputSourceType.HDMI)
+                .setCharacteristic(this.platform.Characteristic.TargetVisibilityState, this.config.oppo205 ? this.platform.Characteristic.TargetVisibilityState.SHOWN : this.platform.Characteristic.TargetVisibilityState.HIDDEN)
+                .setCharacteristic(this.platform.Characteristic.CurrentVisibilityState, this.config.oppo205 ? this.platform.Characteristic.CurrentVisibilityState.SHOWN : this.platform.Characteristic.CurrentVisibilityState.HIDDEN);
+        this.tvService.addLinkedService(this.coaxialIn);
+        this.usbAudioIn = this.accessory.getService('USB Audio In') ||
+            this.accessory.addService(this.platform.Service.InputSource, 'USB Audio In', 'YourUniqueIdentifier-4007')
+                .setCharacteristic(this.platform.Characteristic.Identifier, 6)
+                .setCharacteristic(this.platform.Characteristic.ConfiguredName, 'USB Audio In')
+                .setCharacteristic(this.platform.Characteristic.IsConfigured, this.platform.Characteristic.IsConfigured.CONFIGURED)
+                .setCharacteristic(this.platform.Characteristic.InputSourceType, this.platform.Characteristic.InputSourceType.HDMI)
+                .setCharacteristic(this.platform.Characteristic.TargetVisibilityState, this.config.oppo205 ? this.platform.Characteristic.TargetVisibilityState.SHOWN : this.platform.Characteristic.TargetVisibilityState.HIDDEN)
+                .setCharacteristic(this.platform.Characteristic.CurrentVisibilityState, this.config.oppo205 ? this.platform.Characteristic.CurrentVisibilityState.SHOWN : this.platform.Characteristic.CurrentVisibilityState.HIDDEN);
+        this.tvService.addLinkedService(this.usbAudioIn);
         /////Media State/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         this.tvService.getCharacteristic(this.platform.Characteristic.CurrentMediaState)
             .on('get', (callback) => {
@@ -401,7 +440,7 @@ class oppoAccessory {
                 if (newValue === 0) {
                     this.sending([this.pressedButton('VOLUME UP')]);
                 }
-                this.platform.log('set VolumeSelector => setNewValue: ' + newValue);
+                this.platform.log('Volume Value moved by: ' + newValue);
                 callback(null);
             });
         this.speakerService.getCharacteristic(this.platform.Characteristic.Mute)
@@ -410,15 +449,17 @@ class oppoAccessory {
                 callback(null, currentValue);
             })
             .on('set', (newValue, callback) => {
-                let newVolume = 100;
+                let newVolume = this.targetVolume;
                 if (newValue === false) {
                     this.sending([this.volumeChange(newVolume)]);
+                    this.platform.log.debug('Volume Value set to: Unmute');
                 }
                 if (newValue === true) {
                     newVolume = 0;
                     this.sending([this.volumeChange(newVolume)]);
+                    this.platform.log.debug('Volume Value set to: Mute');
                 }
-                this.platform.log('set VolumeSelector => setNewValue: ' + newValue);
+
                 callback(null);
             });
         this.speakerService.addCharacteristic(this.platform.Characteristic.Volume)
@@ -428,7 +469,7 @@ class oppoAccessory {
             })
             .on('set', (newValue, callback) => {
                 this.sending([this.volumeChange(newValue)]);
-                this.platform.log('set VolumeSelector => setNewValue: ' + newValue);
+                this.platform.log.debug('Volume Value set to: ' + newValue);
                 callback(null);
             });
         this.tvService.addLinkedService(this.speakerService);
@@ -442,7 +483,7 @@ class oppoAccessory {
                     callback(null, currentValue);
                 })
                 .on('set', (newValue, callback) => {
-                    this.platform.log('set Movie Control => setNewValue: ' + newValue);
+                    this.platform.log('Movie progress state set to: ' + newValue);
                     callback(null);
                 });
             this.movieControlL.addCharacteristic(new this.platform.Characteristic.Brightness())
@@ -455,7 +496,7 @@ class oppoAccessory {
                     let totalMovieTime = this.firstElapsedMovie + this.movieRemaining;
                     if (newSendValue > totalMovieTime) { newSendValue = totalMovieTime; }
                     this.sending([this.movieTime(this.secondsToTime(newSendValue))]);
-                    this.platform.log('set Movie Control => setNewValue: ' + newValue);
+                    this.platform.log('Movie progress set to: ' + newValue + '%');
                     callback(null);
                 });
             this.chapterSelectorL = this.accessory.getService('Chapter Number') ||
@@ -466,7 +507,7 @@ class oppoAccessory {
                     callback(null, currentValue);
                 })
                 .on('set', (newValue, callback) => {
-                    this.platform.log('set Chapter Selector => setNewValue: ' + newValue);
+                    this.platform.log('Chapter state set to: ' + newValue);
                     callback(null);
                 });
             this.chapterSelectorL.addCharacteristic(new this.platform.Characteristic.Brightness())
@@ -479,7 +520,7 @@ class oppoAccessory {
                         newValue = this.currentChapterSelector[1]
                     }
                     this.sending([this.chapterChange(newValue)]);
-                    this.platform.log('set Chapter Selector => setNewValue: ' + newValue);
+                    this.platform.log('Chapter number set to: ' + newValue);
                     callback(null);
                 });
             this.chapterControlL = this.accessory.getService('Chapter Progress') ||
@@ -490,7 +531,7 @@ class oppoAccessory {
                     callback(null, currentValue);
                 })
                 .on('set', (newValue, callback) => {
-                    this.platform.log('set Chapter progress => setNewValue: ' + newValue);
+                    this.platform.log('Chapter progress status set to: ' + newValue);
                     callback(null);
                 });
             this.chapterControlL.addCharacteristic(new this.platform.Characteristic.Brightness())
@@ -503,14 +544,14 @@ class oppoAccessory {
                     let totalChapterTime = this.chapterElapsedFirst + this.chapterRemainingFirst;
                     if (newSendValue > totalChapterTime) { newSendValue = totalChapterTime; }
                     this.sending([this.chapterTime(this.secondsToTime(newSendValue))]);
-                    this.platform.log('set Chapter progress => setNewValue: ' + newValue);
+                    this.platform.log('Chapter progress set to: ' + newValue + '%');
                     callback(null);
                 });
         }
         /////////////Addtional Services////////////////////////////////////////////////////////////////////////////////////
         this.service = this.accessory.getService(this.platform.Service.Switch) || this.accessory.addService(this.platform.Service.Switch);
         this.service.setCharacteristic(this.platform.Characteristic.Name, `${accessory.context.device.oppoDisplayName} Power Switch`);
-        this.service.getCharacteristic(this.platform.Characteristic.Name).updateValue(`${accessory.context.device.oppoDisplayName} Power Switch`);
+        this.service.updateCharacteristic(this.platform.Characteristic.Name, `${accessory.context.device.oppoDisplayName} Power Switch`);
         this.service.getCharacteristic(this.platform.Characteristic.On)
             .on('set', this.setOn.bind(this))
             .on('get', this.getOn.bind(this));
@@ -540,6 +581,13 @@ class oppoAccessory {
             this.accessory.addService(this.platform.Service.MotionSensor, 'Dolby Atmos Sound', 'YourUniqueIdentifier-8');
         this.dtsSound = this.accessory.getService('DTS') ||
             this.accessory.addService(this.platform.Service.MotionSensor, 'DTS', 'YourUniqueIdentifier-9');
+        this.connectionStatus = this.accessory.getService('Oppo Not Responding') ||
+            this.accessory.addService(this.platform.Service.MotionSensor, 'Oppo Not Responding', 'YourUniqueIdentifier-1010');
+        this.connectionStatus.getCharacteristic(this.platform.Characteristic.StatusFault)
+            .on('get', (callback) => {
+                let currentValue = this.connectionLimitStatus;
+                callback(null, currentValue);
+            });
         ///////////////////////////////////Input buttons//////////////////////////////////////////////////////////////////////////
         if (this.config.inputButtons === true) {
             this.bluRayInput = this.accessory.getService('Blu-ray Input') ||
@@ -566,7 +614,7 @@ class oppoAccessory {
                     callback(null, currentValue);
                 })
                 .on('set', (value, callback) => {
-                    this.platform.log.debug('HDMI in set to:', value);
+                    this.platform.log.debug('HDMI In set to:', value);
                     if (value === true) {
                         this.sending([this.pressedButton('HDMI IN')]);
                     }
@@ -587,6 +635,53 @@ class oppoAccessory {
                     }
                     callback(null);
                 });
+            if (this.config.oppo205 === true) {
+                this.opticalB = this.accessory.getService('Optical Input') ||
+                    this.accessory.addService(this.platform.Service.Switch, 'Optical Input', 'YourUniqueIdentifier-4010');
+                this.opticalB.getCharacteristic(this.platform.Characteristic.On)
+                    .on('get', (callback) => {
+                        this.platform.log.debug('Optical Input Get State');
+                        let currentValue = this.inputState[3];
+                        callback(null, currentValue);
+                    })
+                    .on('set', (value, callback) => {
+                        this.platform.log.debug('Optical Input set to:', value);
+                        if (value === true) {
+                            this.sending([this.pressedButton('OPTICAL INPUT')]);
+                        }
+                        callback(null);
+                    });
+                this.coaxialB = this.accessory.getService('Coaxial Input') ||
+                    this.accessory.addService(this.platform.Service.Switch, 'Coaxial Input', 'YourUniqueIdentifier-4011');
+                this.coaxialB.getCharacteristic(this.platform.Characteristic.On)
+                    .on('get', (callback) => {
+                        this.platform.log.debug('Coaxial Get State');
+                        let currentValue = this.inputState[4];
+                        callback(null, currentValue);
+                    })
+                    .on('set', (value, callback) => {
+                        this.platform.log.debug('Coaxial set to:', value);
+                        if (value === true) {
+                            this.sending([this.pressedButton('COAXIAL INPUT')]);
+                        }
+                        callback(null);
+                    });
+                this.usbAudioB = this.accessory.getService('USB Audio In Input') ||
+                    this.accessory.addService(this.platform.Service.Switch, 'USB Audio In Input', 'YourUniqueIdentifier-4012');
+                this.usbAudioB.getCharacteristic(this.platform.Characteristic.On)
+                    .on('get', (callback) => {
+                        this.platform.log.debug('USB Audio In Get State');
+                        let currentValue = this.inputState[5];
+                        callback(null, currentValue);
+                    })
+                    .on('set', (value, callback) => {
+                        this.platform.log.debug('USB Audio In set to:', value);
+                        if (value === true) {
+                            this.sending([this.pressedButton('USB AUDIO INPUT')]);
+                        }
+                        callback(null);
+                    });
+            }
         }
         //////Volume control Service as lightbulb////////////////////////////////////////////////////////////////////////////
         if (this.config.volume === true) {
@@ -598,15 +693,17 @@ class oppoAccessory {
                     callback(null, currentValue);
                 })
                 .on('set', (newValue, callback) => {
-                    let newVolume = 100;
+                    let newVolume = this.targetVolume;
                     if (newValue === true) {
                         this.sending([this.volumeChange(newVolume)]);
+                        this.platform.log.debug('Volume Value set to: Unmute');
                     }
                     if (newValue === false) {
                         newVolume = 0;
                         this.sending([this.volumeChange(newVolume)]);
+                        this.platform.log.debug('Volume Value set to: Mute');
                     }
-                    this.platform.log('set VolumeSelector => setNewValue: ' + newValue);
+
                     callback(null);
                 });
 
@@ -617,7 +714,7 @@ class oppoAccessory {
                 })
                 .on('set', (newValue, callback) => {
                     this.sending([this.volumeChange(newValue)]);
-                    this.platform.log('set VolumeSelector => setNewValue: ' + newValue);
+                    this.platform.log.debug('Volume Value set to: ' + newValue);
 
                     callback(null);
                 });
@@ -1456,8 +1553,12 @@ class oppoAccessory {
             this.accessory.removeService(this.chapterSelectorL);
         }
         if (this.config.inputButtons == false) {
+            this.accessory.removeService(this.bluRayInput);
             this.accessory.removeService(this.hdmiIn);
             this.accessory.removeService(this.hdmiOut);
+            this.accessory.removeService(this.opticalB);
+            this.accessory.removeService(this.coaxialB);
+            this.accessory.removeService(this.usbAudioB);
         }
         if (this.config.volume === false) {
             this.accessory.removeService(this.volumeDimmer);
@@ -1607,31 +1708,31 @@ class oppoAccessory {
             this.dolbyVision.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[0]);
             this.hdr10.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[1]);
             this.SDR.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[2]);
-            this.tvService.updateCharacteristic(this.platform.Characteristic.Active, this.powerState_TV);
+            this.tvService.updateCharacteristic(this.platform.Characteristic.Active, this.powerStateTV);
             this.play.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[0]);
             this.pause.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[1]);
             this.stop.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[2]);
             this.dolbySound.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.audioType[0]);
             this.dtsSound.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.audioType[1]);
-            this.tvService.getCharacteristic(this.platform.Characteristic.ActiveIdentifier).updateValue(this.inputID);
-            this.speakerService.getCharacteristic(this.platform.Characteristic.Volume).updateValue(this.currentVolume);
-            this.tvService.getCharacteristic(this.platform.Characteristic.CurrentMediaState).updateValue(this.mediaState);
-            this.speakerService.getCharacteristic(this.platform.Characteristic.Mute).updateValue(this.currentMuteState)
+            this.connectionStatus.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.connectionLimit);
+            this.connectionStatus.updateCharacteristic(this.platform.Characteristic.StatusFault, this.connectionLimitStatus);
             this.tvService.updateCharacteristic(this.platform.Characteristic.CurrentMediaState, this.mediaState);
             this.tvService.updateCharacteristic(this.platform.Characteristic.ActiveIdentifier, this.inputID);
             this.speakerService.updateCharacteristic(this.platform.Characteristic.Volume, this.currentVolume);
             this.speakerService.updateCharacteristic(this.platform.Characteristic.Mute, this.currentMuteState);
             this.bluRay.updateCharacteristic(this.platform.Characteristic.ConfiguredName, this.inputName)
-
             if (this.config.inputButtons === true) {
                 this.bluRayInput.updateCharacteristic(this.platform.Characteristic.On, this.inputState[0]);
                 this.hdmiIn.updateCharacteristic(this.platform.Characteristic.On, this.inputState[1]);
                 this.hdmiOut.updateCharacteristic(this.platform.Characteristic.On, this.inputState[2]);
+                if (this.config.oppo205 === true) {
+                    this.opticalB.updateCharacteristic(this.platform.Characteristic.On, this.inputState[3]);
+                    this.coaxialB.updateCharacteristic(this.platform.Characteristic.On, this.inputState[4]);
+                    this.usbAudioB.updateCharacteristic(this.platform.Characteristic.On, this.inputState[5]);
+                }
             }
-
             if (this.config.volume === true) {
                 this.volumeDimmer.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentVolume);
-                this.volumeDimmer.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentVolume);
                 this.volumeDimmer.updateCharacteristic(this.platform.Characteristic.On, this.currentVolumeSwitch);
             }
 
@@ -1642,11 +1743,8 @@ class oppoAccessory {
                 this.chapterControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentChapterTimeState);
                 this.movieControlL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentMovieProgress);
                 this.movieControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentMovieProgressState);
-
             }
-
         }, this.config.pollingInterval);
-
     }
     //////////////Create Client//////////////////////////////////////////////////////////////////////////
     netConnect() {
@@ -1657,7 +1755,7 @@ class oppoAccessory {
         //////Connect to client
         this.client.connect(OPPO_PORT, this.OPPO_IP, () => {
             clearTimeout(timer);
-            this.platform.log.debug(`[Sending] ${JSON.stringify(this.key)}`);
+            this.platform.log.debug(`Sending: ${this.commandName(this.key)}`);
             this.client.write(this.key);
             this.firstConnection = true;
         });
@@ -1665,52 +1763,32 @@ class oppoAccessory {
         this.client.on('data', (data) => {
             clearTimeout(timer);
             this.eventDecoder(data);
-            if (data.includes("UTC")) {
-                this.platform.log(`[Response] ${data}`);
-            }
-            else if (data.includes("SVM")) {
-                this.platform.log.debug(`[Response] ${data}`);
-            }
-            else if (data.includes("QVM")) {
-                this.platform.log.debug(`[Response] ${data}`);
-            }
-            else if (data.includes("QPW OK OFF")) {
-                this.platform.log.debug(`[Response] ${data}`);
-            }
-            else if (data.includes("QCH")) {
-                this.platform.log.debug(`[Response] ${data}`);
-            }
-            else if (data.includes("QCE")) {
-                this.platform.log.debug(`[Response] ${data}`);
-            }
-            else if (data.includes("QRE")) {
-                this.platform.log.debug(`[Response] ${data}`);
-            }
-            else {
-                this.platform.log(`[Response] ${data}`);
-            }
         });
         /////Errors
         this.client.on('error', (e) => {
             clearTimeout(timer);
-            this.platform.log.debug(`[Error] ${e}`);
-            this.platform.log.debug(`[Trying to reconnect after an error] ${e}`);
-            this.platform.log.debug('[Error] Turn on the device and check the IP Address');
+            this.platform.log.debug(`Error: ${e}`);
+            this.platform.log.debug(`Trying to reconnect after an error`);
+            this.platform.log.debug('Turn on the device and check the IP Address');
             // if (this.reconnectionCounter < this.reconnectionTry) {
             setTimeout(() => {
                 this.reconnectionCounter += 1;
+                this.firstConnection = true;
                 this.platform.log.debug(this.reconnectionCounter);
                 this.client.connect(OPPO_PORT, this.OPPO_IP, () => {
                     clearTimeout(timer);
                     this.platform.log.debug(`Reconnection try number ${this.reconnectionCounter}`);
-                    this.platform.log.debug(`[Sending] ${JSON.stringify(this.key)}`);
-                    this.client.write(this.key);
-                    this.firstConnection = true;
-
+                    this.platform.log.debug(`Sending: ${this.commandName(this.key)}`);
+                    this.client.write('#RST\r\n');
+                    setTimeout(() => {
+                        this.client.write(this.key);
+                    }, 100);
                 });
 
             }, this.reconnectionWait);
-            if (this.reconnectionCounter > 100) {
+            if (this.reconnectionCounter > this.reconnectionTry) {
+                this.connectionLimit = true;
+                this.connectionLimitStatus = 1;
                 if (this.turnOffAllUsed === false) {
                     this.turnOffAll()
                     this.turnOffAllUsed = true;
@@ -1728,22 +1806,27 @@ class oppoAccessory {
                 this.client.destroy();
                 this.client.connect(OPPO_PORT, this.OPPO_IP, () => {
                     clearTimeout(timer);
-                    this.platform.log.debug(`[Reconnecting on after connection closed]`);
+                    this.platform.log.debug(`Reconnecting on after connection closed`);
                     this.platform.log.debug(`Reconnection try number ${this.reconnectionCounter}`);
-                    this.client.write(this.key);
-                    this.platform.log.debug(`[Sending] ${JSON.stringify(this.key)}`);
+                    this.platform.log.debug(`Sending: ${this.commandName(this.key)}`);
+                    this.client.write('#RST\r\n');
+                    setTimeout(() => {
+                        this.client.write(this.key);
+                    }, 500);
                 });
             }, this.reconnectionWait);
-            if (this.reconnectionCounter > 100) {
+            if (this.reconnectionCounter > this.reconnectionTry) {
                 if (this.turnOffAllUsed === false) {
                     this.turnOffAll()
                     this.turnOffAllUsed = true;
+                    this.connectionLimit = true;
+                    this.connectionLimitStatus = 1;
                 }
             }
         });
         /////Time out Timer
         const timer = setTimeout(() => {
-            this.platform.log.debug('[ERROR] Attempt at connection exceeded timeout value');
+            this.platform.log.debug('ERROR. Attempt at connection exceeded timeout value');
             // client.destroy();
         }, timeout);
     }
@@ -1783,7 +1866,6 @@ class oppoAccessory {
         callback(null);
     }
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////Pause
-
     pauseSwitchStateGet(callback) {
         this.platform.log.debug('Pause State');
         let currentValue = this.playBackState[1];
@@ -1809,150 +1891,45 @@ class oppoAccessory {
         }
         callback(null);
     }
-
     /////Sending Instructions/////////////////////////////////////////////////////////////////////////////////////////////////////
     sending(press) {
         let i = 0;
         while (i < press.length) {
             this.client.write(press[i]);
             if (press[i].includes("QVM")) {
-                this.platform.log.debug(`[Sending] ${JSON.stringify(press[i])}`);
+                this.platform.log.debug(`Sending: ${this.commandName(press[i])}`);
             }
             else if (press[i].includes("QPW")) {
-                this.platform.log.debug(`[Sending] ${JSON.stringify(press[i])}`);
+                this.platform.log.debug(`Sending: ${this.commandName(press[i])}`);
             }
             else if (press[i].includes("QCE")) {
-                this.platform.log.debug(`[Sending] ${JSON.stringify(press[i])}`);
+                this.platform.log.debug(`Sending: ${this.commandName(press[i])}`);
             }
             else if (press[i].includes("QCH")) {
-                this.platform.log.debug(`[Sending] ${JSON.stringify(press[i])}`);
+                this.platform.log.debug(`Sending: ${this.commandName(press[i])}`);
             }
             else if (press[i].includes("QRE")) {
-                this.platform.log.debug(`[Sending] ${JSON.stringify(press[i])}`);
+                this.platform.log.debug(`Sending: ${this.commandName(press[i])}`);
             }
-            else { this.platform.log(`[Sending] ${JSON.stringify(press[i])}`); }
+            else if (press[i].includes("SRH T")) {
+                this.platform.log(`Sending: Search Title Time ${press[i]}`);
+            }
+            else if (press[i].includes("SRH C")) {
+                this.platform.log(`Sending: Search Chapter Time ${press[i]}`);
+            }
+            else if (press[i].includes("SRH")) {
+                this.platform.log(`Sending: Search Time ${press[i]}`);
+            }
+            else if (press[i].includes("SVL")) {
+                this.platform.log(`Sending: Volume Change to ${press[i]}`);
+            }
+            else {
+                this.platform.log(`Sending: ${this.commandName(press[i])}`);
+            }
             i += 1;
         }
     }
     //////////Current Status//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    newInputName(newName) {
-        this.inputName = newName;
-        this.bluRay.updateCharacteristic(this.platform.Characteristic.ConfiguredName, this.inputName)
-    }
-    newChapter(newChapter) {
-        if (newChapter === 0) {
-            this.currentChapterSelectorState = false;
-        }
-        if (newChapter !== 0) {
-            this.currentChapterSelectorState = true;
-            if (newChapter !== this.currentChapterSelector[0]) {
-                this.chapterFirstUpdate = true;
-                setTimeout(() => {
-                    this.sending([this.query('CHAPTER TIME REMAINING')]);
-                }, 200);
-                setTimeout(() => {
-                    this.sending([this.query('CHAPTER TIME ELAPSED')]);
-                }, 300);
-            }
-        }
-        this.currentChapterSelector[0] = newChapter;
-        this.chapterSelectorL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentChapterSelector[0]);
-        this.chapterSelectorL.updateCharacteristic(this.platform.Characteristic.On, this.currentChapterSelectorState);
-    }
-    newChapterTime(newTime) {
-        if (newTime === 0) {
-            this.currentChapterTimeState = false;
-            this.currentChapterTime = 0;
-        }
-        if (newTime !== 0) {
-            this.currentChapterTimeState = true;
-        }
-        if (this.chapterElapsedFirst + this.chapterRemainingFirst !== 0) {
-            this.currentChapterTime = Math.round(newTime * 100 / (this.chapterElapsedFirst + this.chapterRemainingFirst));
-        }
-        if (this.currentChapterTime > 100) { this.currentChapterTime = 100 }
-        this.chapterControlL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentChapterTime);
-        this.chapterControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentChapterTimeState);
-    }
-    newMovieTime(newMovieTime) {
-        if (newMovieTime === 0) {
-            this.currentMovieProgressState = false;
-            this.currentMovieProgress = 0;
-        }
-        if (newMovieTime !== 0) {
-            this.currentMovieProgressState = true;
-        }
-        if (this.firstElapsedMovie + this.movieRemaining !== 0) {
-            this.currentMovieProgress = Math.round(newMovieTime * 100 / (this.firstElapsedMovie + this.movieRemaining));
-        }
-        if (this.currentMovieProgress > 100) { this.currentMovieProgress = 100 }
-        this.movieControlL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentMovieProgress);
-        this.movieControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentMovieProgressState);
-    }
-    newPowerState(newValue) {
-        if (newValue === true) {
-            this.powerState_TV = 1;
-        }
-        else {
-            this.powerState_TV = 0;
-        }
-        this.powerState = newValue;
-        this.service.updateCharacteristic(this.platform.Characteristic.On, this.powerState);
-        this.tvService.updateCharacteristic(this.platform.Characteristic.Active, this.powerState_TV);
-    }
-    newPlayBackState(newPlay) {
-        this.playBackState = newPlay;
-        if (this.playBackState[0] === true) {
-            this.mediaState = 0;
-        }
-        if (this.playBackState[1] === true) {
-            this.mediaState = 1;
-        }
-        if (this.playBackState[2] === true) {
-            this.mediaState = 2;
-        }
-        if (this.playBackState[0] === false && this.playBackState[1] === false && this.playBackState[2] === false) {
-            this.mediaState = 4;
-        }
-        this.play.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[0]);
-        this.pause.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[1]);
-        this.stop.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[2]);
-        this.tvService.updateCharacteristic(this.platform.Characteristic.CurrentMediaState, this.mediaState);
-        this.tvService.getCharacteristic(this.platform.Characteristic.CurrentMediaState).updateValue(this.mediaState);
-    }
-    newHDRState(newHDR) {
-        this.HDROutput = newHDR;
-        this.dolbyVision.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[0]);
-        this.hdr10.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[1]);
-        this.SDR.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[2]);
-    }
-    newAudioType(newAT) {
-        this.audioType = newAT;
-        this.dolbySound.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.audioType[0]);
-        this.dtsSound.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.audioType[1]);
-    }
-    newInputState(newInput) {
-        this.inputState = newInput;
-        if (this.inputState[0] === true) {
-            this.inputID = 1;
-        }
-        if (this.inputState[1] === true) {
-            this.inputID = 2;
-        }
-        if (this.inputState[2] === true) {
-            this.inputID = 3;
-        }
-        if (this.inputState[0] === false && this.inputState[1] === false && this.inputState[2] === false) {
-            this.inputID = 0;
-        }
-        this.tvService.updateCharacteristic(this.platform.Characteristic.ActiveIdentifier, this.inputID);
-        this.tvService.getCharacteristic(this.platform.Characteristic.ActiveIdentifier).updateValue(this.inputID);
-        if (this.config.inputButtons === true) {
-            this.bluRayInput.updateCharacteristic(this.platform.Characteristic.On, this.inputState[0]);
-            this.hdmiIn.updateCharacteristic(this.platform.Characteristic.On, this.inputState[1]);
-            this.hdmiOut.updateCharacteristic(this.platform.Characteristic.On, this.inputState[2]);
-        }
-    }
     newVolumeState(newVolumeNum) {
         this.currentVolume = newVolumeNum;
         if (newVolumeNum === 0) {
@@ -1971,6 +1948,169 @@ class oppoAccessory {
             this.volumeDimmer.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentVolume);
             this.volumeDimmer.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentVolume);
             this.volumeDimmer.updateCharacteristic(this.platform.Characteristic.On, this.currentVolumeSwitch);
+            this.volumeDimmer.getCharacteristic(this.platform.Characteristic.On).updateValue(this.currentVolumeSwitch);
+        }
+    }
+    newInputName(newName) {
+        this.inputName = newName;
+        this.bluRay.updateCharacteristic(this.platform.Characteristic.ConfiguredName, this.inputName)
+        this.bluRay.getCharacteristic(this.platform.Characteristic.ConfiguredName).updateValue(this.inputName);
+    }
+    newChapter(newChapter) {
+        if (newChapter === 0) {
+            this.currentChapterSelectorState = false;
+        }
+        if (newChapter !== 0) {
+            this.currentChapterSelectorState = true;
+            if (newChapter !== this.currentChapterSelector[0]) {
+                this.chapterFirstUpdate = true;
+                setTimeout(() => {
+                    this.sending([this.query('CHAPTER TIME REMAINING')]);
+                }, 200);
+                setTimeout(() => {
+                    this.sending([this.query('CHAPTER TIME ELAPSED')]);
+                }, 400);
+            }
+        }
+        this.currentChapterSelector[0] = newChapter;
+        this.chapterSelectorL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentChapterSelector[0]);
+        this.chapterSelectorL.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentChapterSelector[0]);
+        this.chapterSelectorL.updateCharacteristic(this.platform.Characteristic.On, this.currentChapterSelectorState);
+        this.chapterSelectorL.getCharacteristic(this.platform.Characteristic.On).updateValue(this.currentChapterSelectorState);
+    }
+    newChapterTime(newTime) {
+        if (newTime === 0) {
+            this.currentChapterTimeState = false;
+            this.currentChapterTime = 0;
+        }
+        if (newTime !== 0) {
+            this.currentChapterTimeState = true;
+        }
+        if (this.chapterElapsedFirst + this.chapterRemainingFirst !== 0) {
+            this.currentChapterTime = Math.round(newTime * 100 / (this.chapterElapsedFirst + this.chapterRemainingFirst));
+        }
+        if (this.currentChapterTimeState === true && this.currentChapterTime === 0) {
+            this.currentChapterTime = 1;
+        }
+        if (this.currentChapterTime > 100) { this.currentChapterTime = 100 }
+        this.chapterControlL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentChapterTime);
+        this.chapterControlL.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentChapterTime);
+        this.chapterControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentChapterTimeState);
+        this.chapterControlL.getCharacteristic(this.platform.Characteristic.On).updateValue(this.currentChapterTimeState);
+    }
+    newMovieTime(newMovieTime) {
+        if (newMovieTime === 0) {
+            this.currentMovieProgressState = false;
+            this.currentMovieProgress = 0;
+        }
+        if (newMovieTime !== 0) {
+            this.currentMovieProgressState = true;
+        }
+        if (this.firstElapsedMovie + this.movieRemaining !== 0) {
+            this.currentMovieProgress = Math.round(newMovieTime * 100 / (this.firstElapsedMovie + this.movieRemaining));
+        }
+        if (this.currentMovieProgressState === true && this.currentMovieProgress === 0) {
+            this.currentMovieProgress = 1;
+        }
+        if (this.currentMovieProgress > 100) { this.currentMovieProgress = 100 }
+        this.movieControlL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentMovieProgress);
+        this.movieControlL.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentMovieProgress);
+        this.movieControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentMovieProgressState);
+        this.movieControlL.getCharacteristic(this.platform.Characteristic.On).updateValue(this.currentMovieProgressState);
+    }
+    newPowerState(newValue) {
+        if (newValue === true) {
+            this.powerStateTV = 1;
+        }
+        else {
+            this.powerStateTV = 0;
+        }
+        this.powerState = newValue;
+        this.service.updateCharacteristic(this.platform.Characteristic.On, this.powerState);
+        this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(this.powerState);
+        this.tvService.updateCharacteristic(this.platform.Characteristic.Active, this.powerStateTV);
+        this.tvService.getCharacteristic(this.platform.Characteristic.Active).updateValue(this.powerStateTV);
+    }
+    newPlayBackState(newPlay) {
+        this.playBackState = newPlay;
+        if (this.playBackState[0] === true) {
+            this.mediaState = 0;
+        }
+        if (this.playBackState[1] === true) {
+            this.mediaState = 1;
+        }
+        if (this.playBackState[2] === true) {
+            this.mediaState = 2;
+        }
+        if (this.playBackState[0] === false && this.playBackState[1] === false && this.playBackState[2] === false) {
+            this.mediaState = 4;
+        }
+        this.play.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[0]);
+        this.play.getCharacteristic(this.platform.Characteristic.On).updateValue(this.playBackState[0]);
+        this.pause.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[1]);
+        this.pause.getCharacteristic(this.platform.Characteristic.On).updateValue(this.playBackState[1]);
+        this.stop.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[2]);
+        this.stop.getCharacteristic(this.platform.Characteristic.On).updateValue(this.playBackState[2]);
+        this.tvService.updateCharacteristic(this.platform.Characteristic.CurrentMediaState, this.mediaState);
+        this.tvService.getCharacteristic(this.platform.Characteristic.CurrentMediaState).updateValue(this.mediaState);
+    }
+    newHDRState(newHDR) {
+        this.HDROutput = newHDR;
+        this.dolbyVision.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[0]);
+        this.dolbyVision.getCharacteristic(this.platform.Characteristic.MotionDetected).updateValue(this.HDROutput[0]);
+        this.hdr10.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[1]);
+        this.hdr10.getCharacteristic(this.platform.Characteristic.MotionDetected).updateValue(this.HDROutput[1]);
+        this.SDR.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[2]);
+        this.SDR.getCharacteristic(this.platform.Characteristic.MotionDetected).updateValue(this.HDROutput[2]);
+        
+    }
+    newAudioType(newAT) {
+        this.audioType = newAT;
+        this.dolbySound.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.audioType[0]);
+        this.dolbySound.getCharacteristic(this.platform.Characteristic.MotionDetected).updateValue(this.audioType[0]);
+        this.dtsSound.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.audioType[1]);
+        this.dtsSound.getCharacteristic(this.platform.Characteristic.MotionDetected).updateValue(this.audioType[1]);
+    }
+    newInputState(newInput) {
+        this.inputState = newInput;
+        if (this.inputState[0] === true) {
+            this.inputID = 1;
+        }
+        if (this.inputState[1] === true) {
+            this.inputID = 2;
+        }
+        if (this.inputState[2] === true) {
+            this.inputID = 3;
+        }
+        if (this.inputState[3] === true) {
+            this.inputID = 4;
+        }
+        if (this.inputState[4] === true) {
+            this.inputID = 5;
+        }
+        if (this.inputState[5] === true) {
+            this.inputID = 6;
+        }
+        if (this.inputState[0] === false && this.inputState[1] === false && this.inputState[2] === false) {
+            this.inputID = 0;
+        }
+        this.tvService.updateCharacteristic(this.platform.Characteristic.ActiveIdentifier, this.inputID);
+        this.tvService.getCharacteristic(this.platform.Characteristic.ActiveIdentifier).updateValue(this.inputID);
+        if (this.config.inputButtons === true) {
+            this.bluRayInput.updateCharacteristic(this.platform.Characteristic.On, this.inputState[0]);
+            this.bluRayInput.getCharacteristic(this.platform.Characteristic.On).updateValue(this.inputState[0]);
+            this.hdmiIn.updateCharacteristic(this.platform.Characteristic.On, this.inputState[1]);
+            this.hdmiIn.getCharacteristic(this.platform.Characteristic.On).updateValue(this.inputState[1]);
+            this.hdmiOut.updateCharacteristic(this.platform.Characteristic.On, this.inputState[2]);
+            this.hdmiOut.getCharacteristic(this.platform.Characteristic.On).updateValue(this.inputState[2]);
+            if (this.config.oppo205 === true) {
+                this.opticalB.updateCharacteristic(this.platform.Characteristic.On, this.inputState[3]);
+                this.opticalB.getCharacteristic(this.platform.Characteristic.On).updateValue(this.inputState[3]);
+                this.coaxialB.updateCharacteristic(this.platform.Characteristic.On, this.inputState[4]);
+                this.coaxialB.getCharacteristic(this.platform.Characteristic.On).updateValue(this.inputState[4]);
+                this.usbAudioB.updateCharacteristic(this.platform.Characteristic.On, this.inputState[5]);
+                this.usbAudioB.getCharacteristic(this.platform.Characteristic.On).updateValue(this.inputState[5]);
+            }
         }
     }
     ///Event decoder///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1983,30 +2123,51 @@ class oppoAccessory {
                 //
             }
             /////////////////////////////////Verbose Mode/////////////////////////////////////////
-            else if (res[i].includes('QVM OK 2') || res[i].includes('SVM OK 2')) {
-                if (this.config.movieControl === false) {
-                    this.sending([this.query('POWER STATUS')]);
+            else if (res[i].includes('QVM OK 2')) {
+                this.platform.log.debug(`Response: Verbose Mode 2`);
+                if (this.config.movieControl === true) {
+                    this.sending([this.pressedButton('VERBOSE MODE 3')]);
                 }
-                else { this.sending([this.pressedButton('VERBOSE MODE 3')]); }
+                else { this.sending([this.query('POWER STATUS')]); }
             }
-            else if (res[i].includes('QVM OK 3') || res[i].includes('SVM OK 3')) {
-                if (this.config.movieControl === false) {
-                    this.sending([this.pressedButton('VERBOSE MODE 2')]);
+            else if (res[i].includes('SVM OK 2')) {
+                this.platform.log(`Response: Verbose Mode 2 Executed`);
+                if (this.config.movieControl === true) {
+                    this.sending([this.pressedButton('VERBOSE MODE 3')]);
+                }
+                else { this.sending([this.query('POWER STATUS')]); }
+            }
+            else if (res[i].includes('QVM OK 3')) {
+                this.platform.log.debug(`Response: Verbose Mode 3`);
+                if (this.config.movieControl === true) {
+                    this.sending([this.query('POWER STATUS')]);
                 }
                 else {
-
+                    this.sending([this.pressedButton('VERBOSE MODE 2')]);
+                }
+            }
+            else if (res[i].includes('SVM OK 3')) {
+                this.platform.log(`Response: Verbose Mode 3 Executed`);
+                if (this.config.movieControl === true) {
                     this.sending([this.query('POWER STATUS')]);
+                }
+                else {
+                    this.sending([this.pressedButton('VERBOSE MODE 2')]);
                 }
             }
             else if (res[i].includes('QVM OK 0')) {
+                this.platform.log.debug(`Response: Verbose Mode 0`);
                 if (this.config.movieControl === false) {
                     this.sending([this.pressedButton('VERBOSE MODE 2')]);
                 }
                 else { this.sending([this.pressedButton('VERBOSE MODE 3')]); }
             }
             ///////////////Power Status/////////////////////////////////////////////////////////////////////
-            else if (res[i].includes('OK OFF') || res[i].includes('POF OK OFF') || res[i].includes('UPW 0')) {
+            else if (res[i].includes('QPW OK OFF')) {
+                this.platform.log.debug(`Response: Power Status Query Executed (Off)`);
                 this.reconnectionCounter = 0;
+                this.connectionLimit = false;
+                this.connectionLimitStatus = 0;
                 this.newPowerState(false);
                 this.newPlayBackState([false, false, false]);
                 this.newHDRState([false, false, false]);
@@ -2020,9 +2181,47 @@ class oppoAccessory {
                     this.newMovieTime(0);
                     this.newChapterTime(0);
                 }
-                this.newInputState([false, false, false]);
+                this.newInputState([false, false, false, false, false, false]);
+            }
+            else if (res[i].includes('POF OK OFF')) {
+                this.platform.log(`Response: ${this.commandName(res[i])}`);
+                this.reconnectionCounter = 0;
+                this.connectionLimit = false;
+                this.connectionLimitStatus = 0;
+                this.newPowerState(false);
+                this.newPlayBackState([false, false, false]);
+                this.newHDRState([false, false, false]);
+                this.newAudioType([false, false]);
+                this.newVolumeState(0);
+                this.newInputName('Blu-ray');
+                if (this.config.movieControl === true) {
+                    this.currentMovieProgressFirst = true;
+                    this.chapterFirstUpdate = true;
+                    this.newChapter(0);
+                    this.newMovieTime(0);
+                    this.newChapterTime(0);
+                }
+                this.newInputState([false, false, false, false, false, false]);
+            }
+            else if (res[i].includes('UPW 0')) {
+                this.platform.log(`Response: Power Off Executed`);
+                this.newPowerState(false);
+                this.newPlayBackState([false, false, false]);
+                this.newHDRState([false, false, false]);
+                this.newAudioType([false, false]);
+                this.newVolumeState(0);
+                this.newInputName('Blu-ray');
+                if (this.config.movieControl === true) {
+                    this.currentMovieProgressFirst = true;
+                    this.chapterFirstUpdate = true;
+                    this.newChapter(0);
+                    this.newMovieTime(0);
+                    this.newChapterTime(0);
+                }
+                this.newInputState([false, false, false, false, false, false]);
             }
             else if (res[i].includes('UPW 1')) {
+                this.platform.log(`Response: Power On Executed`);
                 this.newPowerState(true);
                 if (this.firstConnection === true) {
                     this.sending([this.pressedButton('RESET')]);
@@ -2034,11 +2233,14 @@ class oppoAccessory {
                     }, 4200);
                     setTimeout(() => {
                         this.sending([this.query('HDR STATUS')]);
-                    }, 4300);
+                    }, 4400);
                 }
             }
             else if (res[i].includes('PON OK')) {
+                this.platform.log(`Response: ${this.commandName(res[i])}`);
                 this.reconnectionCounter = 0;
+                this.connectionLimit = false;
+                this.connectionLimitStatus = 0;
                 this.newPowerState(true);
                 if (this.firstConnection === true) {
                     this.sending([this.pressedButton('RESET')]);
@@ -2050,12 +2252,15 @@ class oppoAccessory {
                     }, 4200);
                     setTimeout(() => {
                         this.sending([this.query('HDR STATUS')]);
-                    }, 4300);
+                    }, 4400);
                 }
             }
-
-            else if (res[i].includes('OK ON')) {
+            else if (res[i].includes('QPW OK ON')) {
+                this.platform.log(`Response: Power Status Query Executed (On)`);
                 this.newPowerState(true);
+                this.reconnectionCounter = 0;
+                this.connectionLimit = false;
+                this.connectionLimitStatus = 0;
                 if (this.firstConnection === true) {
                     this.platform.log.debug('First Update');
                     this.sending([this.pressedButton('RESET')]);
@@ -2064,17 +2269,18 @@ class oppoAccessory {
                     }, 200);
                     setTimeout(() => {
                         this.sending([this.query('HDR STATUS')]);
-                    }, 300);
+                    }, 500);
                     setTimeout(() => {
                         this.sending([this.query('INPUT STATUS')]);
-                    }, 400);
+                    }, 700);
                     setTimeout(() => {
                         this.sending([this.query('VOLUME STATUS')]);
-                    }, 500);
+                    }, 900);
                 }
             }
             //////////////Movie and chapter progress/////////////////////////////////////////////////
             else if (res[i].includes('UTC')) {
+                this.platform.log.debug(`Response: ${this.commandName(res[i])}`);
                 let updateString = res[i].split(' ');
                 let chapter = parseInt(updateString[2], 10);
                 let time = this.timeToSeconds(updateString[4]);
@@ -2102,17 +2308,19 @@ class oppoAccessory {
                     if (this.chapterCounter >= this.chapterUpdateSec) {
                         setTimeout(() => {
                             this.sending([this.query('CHAPTER TIME ELAPSED')]);
-                        }, 500);
+                        }, 600);
                         this.chapterCounter = 0;
                     }
                 }
             }
             else if (res[i].includes('QCR')) {
+                this.platform.log.debug(`Response: ${res[i]}`);
                 if (this.chapterFirstUpdate === true) {
                     this.chapterRemainingFirst = this.timeToSeconds(this.justNumber(res[i]));
                 }
             }
             else if (res[i].includes('QCE')) {
+                this.platform.log.debug(`Response: ${res[i]}`);
                 if (this.chapterFirstUpdate === true) {
                     this.chapterElapsedFirst = this.timeToSeconds(this.justNumber(res[i]));
                     setTimeout(() => {
@@ -2125,34 +2333,87 @@ class oppoAccessory {
                 }
             }
             else if (res[i].includes('QRE')) {
+                this.platform.log.debug(`Response: ${res[i]}`);
                 this.currentMovieProgressFirst = false;
                 this.movieRemaining = this.timeToSeconds(this.justNumber(res[i]));
             }
             else if (res[i].includes('QCH')) {
+                this.platform.log.debug(`Response: ${res[i]}`);
                 let numberArray = this.justNumber(res[i]).split('/')
                 let number = parseInt(numberArray[0])
                 this.currentChapterSelector[1] = parseInt(numberArray[1])
                 this.reconnectionCounter = 0;
+                this.connectionLimit = false;
+                this.connectionLimitStatus = 0;
                 this.newChapter(number);
             }
             ////////////////Volume state update///////////////////////////////////////////////////////////
-            else if (res[i].includes('UVL') || res[i].includes('QVL')) {
+            else if (res[i].includes('UVL')) {
                 if (res[i].includes('UMT')) {
-                    this.newVolumeState(100);
-                    this.reconnectionCounter = 0;
+                    this.platform.log(`Response: Unmuted`);
+                    this.newVolumeState(this.targetVolume);
                 }
                 else if (!res[i].includes('MUT')) {
                     let numberOnly = res[i].replace(/^\D+/g, '')
                     this.newVolumeState(parseInt(numberOnly, 10))
+                    this.platform.log(`Response: Volume Level set to ${numberOnly}`);
+                    this.targetVolume = numberOnly;
+                }
+                else {
+                    this.platform.log(`Response: Muted`);
+                    this.newVolumeState(0);
+                }
+            }
+            else if (res[i].includes('QVL')) {
+                this.platform.log(`Response: ${this.commandName(res[i])}`);
+                if (res[i].includes('UMT')) {
+                    this.newVolumeState(this.targetVolume);
                     this.reconnectionCounter = 0;
+                    this.connectionLimit = false;
+                    this.connectionLimitStatus = 0;
+                }
+                else if (!res[i].includes('MUT')) {
+                    let numberOnly = res[i].replace(/^\D+/g, '')
+                    this.newVolumeState(parseInt(numberOnly, 10))
+                    this.targetVolume = numberOnly;
+                    this.reconnectionCounter = 0;
+                    this.connectionLimit = false;
+                    this.connectionLimitStatus = 0;
                 }
                 else {
                     this.newVolumeState(0)
                     this.reconnectionCounter = 0;
+                    this.connectionLimit = false;
+                    this.connectionLimitStatus = 0;
+                }
+            }
+            else if (res[i].includes('SVL')) {
+                if (res[i].includes('MUTE')) {
+                    this.platform.log(`Response: Mute Executed`);
+                    this.newVolumeState(0);
+                }
+                else {
+                    let numberOnly = res[i].replace(/^\D+/g, '')
+                    this.platform.log(`Response: Volume set to ${numberOnly}`);
+                    this.newVolumeState(parseInt(numberOnly, 10))
+                    this.targetVolume = numberOnly;
                 }
             }
             //////Playback update/////////////////////////////////////////////////////////////
-            else if (res[i].includes('OK PLAY')||res[i].includes('UPL PLAY')) {
+            else if (res[i].includes('OK PLAY')) {
+                this.platform.log(`Response: Play Executed`);
+                this.reconnectionCounter = 0;
+                this.connectionLimit = false;
+                this.connectionLimitStatus = 0;
+                this.newPlayBackState([true, false, false]);
+                if (!this.movieType.includes('T')) {
+                    setTimeout(() => {
+                        this.sending([this.query('MEDIA NAME')]);
+                    }, 3000);
+                }
+            }
+            else if (res[i].includes('UPL PLAY')) {
+                this.platform.log(`Response: Play Executed`);
                 this.newPlayBackState([true, false, false]);
                 if (!this.movieType.includes('T')) {
                     setTimeout(() => {
@@ -2161,20 +2422,34 @@ class oppoAccessory {
                 }
             }
             else if (res[i].includes('QFN OK')) {
+                this.platform.log(`Response: ${this.commandName(res[i])}`);
                 let nameArray = res[i].split(' ')
-                let newVideoName=nameArray[2]; 
-                i=3;
-                while(nameArray.length>i){
-                    newVideoName  +=  ` ${nameArray[i]}`;
-                    i+=1;
-                    }
+                let newVideoName = nameArray[2];
+                i = 3;
+                while (nameArray.length > i) {
+                    newVideoName += ` ${nameArray[i]}`;
+                    i += 1;
+                }
                 this.newInputName(newVideoName);
             }
-            else if (res[i].includes('OK PAUSE') || res[i].includes('UPL PAUS')) {
+            else if (res[i].includes('OK PAUSE')) {
+                this.platform.log(`Response: Pause Executed`);
+                this.reconnectionCounter = 0;
+                this.connectionLimit = false;
+                this.connectionLimitStatus = 0;
                 this.newPlayBackState([false, true, false]);
             }
-            else if (res[i].includes('OK STOP') || res[i].includes('UPL STOP')) {
+            else if (res[i].includes('UPL PAUS')) {
+                this.platform.log(`Response: Pause Executed`);
+                this.newPlayBackState([false, true, false]);
+            }
+            else if (res[i].includes('OK STOP')) {
+                this.platform.log(`Response: Stop Executed`);
+                this.reconnectionCounter = 0;
+                this.connectionLimit = false;
+                this.connectionLimitStatus = 0;
                 this.newPlayBackState([false, false, false]);
+                this.newAudioType([false, false]);
                 this.newInputName('Blu-ray');
                 if (this.config.movieControl === true) {
                     this.currentMovieProgressFirst = true;
@@ -2184,14 +2459,65 @@ class oppoAccessory {
                     this.newChapterTime(0);
                 }
             }
-            else if (res[i].includes('OK STEP') || res[i].includes('OK FREV') || res[i].includes('OK FREV')
-                || res[i].includes('OK SFWD') || res[i].includes('OK SREV') || res[i].includes('UPL STPF') || res[i].includes('UPL STPR')
-                || res[i].includes('UPL FFW1') || res[i].includes('UPL FRV1') || res[i].includes('UPL SFW1') || res[i].includes('UPL SRV1')
-                || res[i].includes('ER OVERTIME') || res[i].includes('OK MEDIA') || res[i].includes('OK SETUP') || res[i].includes('UPL MCTR')
-                || res[i].includes('UPL MENUP') || res[i].includes('QPL OK CLOSE')) {
+            else if (res[i].includes('UPL STOP')) {
+                this.platform.log(`Response: Stop Executed`);
                 this.newPlayBackState([false, false, false]);
+                this.newAudioType([false, false]);
+                this.newInputName('Blu-ray');
+                if (this.config.movieControl === true) {
+                    this.currentMovieProgressFirst = true;
+                    this.chapterFirstUpdate = true;
+                    this.newChapter(0);
+                    this.newMovieTime(0);
+                    this.newChapterTime(0);
+                }
             }
-            else if (res[i].includes('UPL HOME') || res[i].includes('OK HOME')) {
+            else if (res[i].includes('UPL STPF') || res[i].includes('UPL STPR') || res[i].includes('UPL FFW1') || res[i].includes('UPL FRV1')
+                || res[i].includes('UPL SFW1') || res[i].includes('UPL SRV1') || res[i].includes('UPL MCTR') || res[i].includes('UPL MENUP')) {
+                this.newPlayBackState([false, false, false]);
+                this.platform.log(`Response: ${this.commandName(res[i])}`);
+            }
+            else if (res[i].includes('OK STEP') || res[i].includes('OK FREV') || res[i].includes('OK FREV') || res[i].includes('OK SFWD')
+                || res[i].includes('OK SREV') || res[i].includes('ER OVERTIME') || res[i].includes('OK MEDIA') || res[i].includes('OK SETUP')
+                || res[i].includes('UPL MCTR') || res[i].includes('QPL OK CLOSE')) {
+                this.reconnectionCounter = 0;
+                this.connectionLimit = false;
+                this.connectionLimitStatus = 0;
+                this.newPlayBackState([false, false, false]);
+                this.platform.log(`Response: ${this.commandName(res[i])}`);
+            }
+            else if (res[i].includes('UPL HOME')) {
+                this.platform.log(`Response: ${this.commandName(res[i])}`);
+                this.newPowerState(true);
+                this.newPlayBackState([false, false, false]);
+                this.newHDRState([false, false, true]);
+                this.newAudioType([false, false]);
+                this.newInputName('Blu-ray');
+                if (this.config.movieControl === true) {
+                    this.currentMovieProgressFirst = true;
+                    this.chapterFirstUpdate = true;
+                    this.newChapter(0);
+                    this.newMovieTime(0);
+                    this.newChapterTime(0);
+                }
+                if (this.firstConnection === true) {
+                    this.sending([this.pressedButton('RESET')]);
+                    setTimeout(() => {
+                        this.sending([this.query('INPUT STATUS')]);
+                    }, 100);
+                    setTimeout(() => {
+                        this.sending([this.query('VOLUME STATUS')]);
+                    }, 300);
+                    setTimeout(() => {
+                        this.sending([this.query('HDR STATUS')]);
+                    }, 500);
+                }
+            }
+            else if (res[i].includes('OK HOME')) {
+                this.platform.log(`Response: ${this.commandName(res[i])}`);
+                this.reconnectionCounter = 0;
+                this.connectionLimit = false;
+                this.connectionLimitStatus = 0;
                 this.newPowerState(true);
                 this.newPlayBackState([false, false, false]);
                 this.newHDRState([false, false, true]);
@@ -2212,16 +2538,15 @@ class oppoAccessory {
                     }, 100);
                     setTimeout(() => {
                         this.sending([this.query('VOLUME STATUS')]);
-                    }, 200);
+                    }, 300);
                     setTimeout(() => {
                         this.sending([this.query('HDR STATUS')]);
-                    }, 300);
-
+                    }, 500);
                 }
-
             }
             ///////////////////Video and sound update///////////////////////////////////////////////////
-            else if (res[i].includes('U3D 2D')) {
+            else if (res[i].includes('U3D 2D') || res[i].includes('U3D 3D')) {
+                this.platform.log(`Response: ${this.commandName(res[i])}`);
                 this.currentMovieProgressFirst = true;
                 this.chapterFirstUpdate = true;
                 this.sending([this.pressedButton('RESET')]);
@@ -2234,45 +2559,75 @@ class oppoAccessory {
                 }, 2000);
             }
             else if (res[i].includes('OK HDR')) {
+                this.platform.log(`Response: HDR Video`);
                 this.newHDRState([false, true, false]);
+                this.reconnectionCounter = 0;
+                this.connectionLimit = false;
                 this.firstConnection = false;
+                this.connectionLimitStatus = 0;
             }
             else if (res[i].includes('OK SDR')) {
+                this.platform.log(`Response: SDR Video`);
                 this.newHDRState([false, false, true]);
                 this.reconnectionCounter = 0;
+                this.connectionLimitStatus = 0;
+                this.connectionLimit = false;
                 this.firstConnection = false;
             }
             else if (res[i].includes('OK DOV')) {
+                this.platform.log(`Response: Dolby Vision Video`);
                 this.newHDRState([true, false, false]);
+                this.reconnectionCounter = 0;
+                this.connectionLimitStatus = 0;
+                this.connectionLimit = false;
                 this.firstConnection = false;
             }
             ////////////////Input Update/////////////////////////////////////////////////////////
             else if (res[i].includes('BD-PLAYER')) {
-                this.newInputState([true, false, false]);
+                this.platform.log(`Response: ${this.commandName(res[i])}`);
+                this.newInputState([true, false, false, false, false, false]);
             }
             else if (res[i].includes('HDMI-IN')) {
-                this.newInputState([false, true, false]);
+                this.platform.log(`Response: ${this.commandName(res[i])}`);
+                this.newInputState([false, true, false, false, false, false]);
             }
             else if (res[i].includes('ARC-HDMI-OUT')) {
-                this.newInputState([false, false, true]);
+                this.platform.log(`Response: ${this.commandName(res[i])}`);
+                this.newInputState([false, false, true, false, false, false]);
+            }
+            else if (res[i].includes('OPTICAL')) {
+                this.platform.log(`Response: ${this.commandName(res[i])}`);
+                this.newInputState([false, false, false, true, false, false]);
+            }
+            else if (res[i].includes('COAXIAL')) {
+                this.platform.log(`Response: ${this.commandName(res[i])}`);
+                this.newInputState([false, false, false, false, true, false]);
+            }
+            else if (res[i].includes('USB-AUDIO')) {
+                this.platform.log(`Response: ${this.commandName(res[i])}`);
+                this.newInputState([false, false, false, false, false, true]);
             }
             /////////////////Sound update/////////////////////////////////////////////////////////
             else if (res[i].includes('UAT DT')) {
+                this.platform.log(`Response: Dolby Atmos Sound`);
                 this.newAudioType([true, false]);
             }
-            else if (res[i].includes('UAT TM')) {
+            else if (res[i].includes('UAT TM') || res[i].includes('UAT TH') || res[i].includes('UAT TS')) {
+                this.platform.log(`Response: DTS Sound`);
                 this.newAudioType([false, true]);
             }
             else if (res[i].includes('UAT DP')) {
+                this.platform.log(`Response: Dolby Atmos Sound`);
                 this.newAudioType([true, false]);
             }
             else if (res[i].includes('UAT DD') || res[i].includes('UAT TS') || res[i].includes('UAT TH')
                 || res[i].includes('UAT TH') || res[i].includes('UAT PC') || res[i].includes('UAT PC')
                 || res[i].includes('UAT MP') || res[i].includes('UAT CD') || res[i].includes('UAT UN')) {
                 this.newAudioType([false, false]);
+                this.platform.log(`Response: ${this.commandName(res[i])}`);
             }
             else {
-                //
+                this.platform.log(`Response: ${this.commandName(res[i])}`);
             }
             i += 1;
         }
@@ -2335,9 +2690,265 @@ class oppoAccessory {
             case "MEDIA TIME REMAINING":
                 key += "QRE";
                 break;
+            case "FIRMWARE":
+                key += "QVR";
+                break;
         }
-        key += '\r';
+        key += '\r\n';
         return key;
+    }
+    //////////Sending Command Dame Decoder///////////
+    commandName(keyS) {
+        let keySent = '';
+        if (keyS.includes('PON')) {
+            keySent = 'Power On';
+        }
+        else if (keyS.includes('POF')) {
+            keySent = 'Power Off';
+        }
+        else if (keyS.includes('SVM 2')) {
+            keySent = 'Verbose Mode 2';
+        }
+        else if (keyS.includes('SVM 3')) {
+            keySent = 'Verbose Mode 3';
+        }
+        else if (keyS.includes('EJT')) {
+            keySent = 'Eject/Open';
+        }
+        else if (keyS.includes('NUP')) {
+            keySent = 'Cursor Up';
+        }
+        else if (keyS.includes('NDN')) {
+            keySent = 'Cursor Down';
+        }
+        else if (keyS.includes('NLT')) {
+            keySent = 'Cursor Left';
+        }
+        else if (keyS.includes('NRT')) {
+            keySent = 'Cursor Right';
+        }
+        else if (keyS.includes('SEL')) {
+            keySent = 'Enter';
+        }
+        else if (keyS.includes('MNU')) {
+            keySent = 'Menu';
+        }
+        else if (keyS.includes('RET')) {
+            keySent = 'Back';
+        }
+        else if (keyS.includes('PLA')) {
+            keySent = 'Play';
+        }
+        else if (keyS.includes('PAU')) {
+            keySent = 'Pause';
+        }
+        else if (keyS.includes('STP')) {
+            keySent = 'Stop';
+        }
+        else if (keyS.includes('PRE')) {
+            keySent = 'Previous Chapter';
+        }
+        else if (keyS.includes('NXT')) {
+            keySent = 'Next Chapter';
+        }
+        else if (keyS.includes('CLR')) {
+            keySent = 'Clear';
+        }
+        else if (keyS.includes('TTL')) {
+            keySent = 'Top Menu';
+        }
+        else if (keyS.includes('OPT')) {
+            keySent = 'Option';
+        }
+        else if (keyS.includes('HOM')) {
+            keySent = 'Home Menu';
+        }
+        else if (keyS.includes('OSD')) {
+            keySent = 'Information';
+        }
+        else if (keyS.includes('SET')) {
+            keySent = 'Setup';
+        }
+        else if (keyS.includes('REV')) {
+            keySent = 'Rewind';
+        }
+        else if (keyS.includes('FWD')) {
+            keySent = 'Forward';
+        }
+        else if (keyS.includes('SIS 0') || keyS.includes('SIS OK 0')) {
+            keySent = 'Bluray Input';
+        }
+        else if (keyS.includes('SIS 1') || keyS.includes('SIS OK 1')) {
+            keySent = 'HDMI In';
+        }
+        else if (keyS.includes('SIS 2') || keyS.includes('SIS OK 2')) {
+            keySent = 'HDMI Out';
+        }
+        else if (keyS.includes('SIS 3') || keyS.includes('SIS OK 3')) {
+            keySent = 'Optical In';
+        }
+        else if (keyS.includes('SIS 4') || keyS.includes('SIS OK 4')) {
+            keySent = 'Coaxial In';
+        }
+        else if (keyS.includes('SIS 5') || keyS.includes('SIS OK 5')) {
+            keySent = 'USB Audio In';
+        }
+        else if (keyS.includes('DIM')) {
+            keySent = 'Dimmer';
+        }
+        else if (keyS.includes('PUR')) {
+            keySent = 'Pure Audio';
+        }
+        else if (keyS.includes('GOT')) {
+            keySent = 'Go To';
+        }
+        else if (keyS.includes('PUP')) {
+            keySent = 'Page Up';
+        }
+        else if (keyS.includes('PDN')) {
+            keySent = 'Page Down';
+        }
+        else if (keyS.includes('MNU')) {
+            keySent = 'Pop-Up Menu';
+        }
+        else if (keyS.includes('RED')) {
+            keySent = 'Red';
+        }
+        else if (keyS.includes('GRN')) {
+            keySent = 'Green';
+        }
+        else if (keyS.includes('BLU')) {
+            keySent = 'Blue';
+        }
+        else if (keyS.includes('YLW')) {
+            keySent = 'Yellow';
+        }
+        else if (keyS.includes('AUD')) {
+            keySent = 'Audio';
+        }
+        else if (keyS.includes('SUB')) {
+            keySent = 'Subtitle';
+        }
+        else if (keyS.includes('ANG')) {
+            keySent = 'Angle';
+        }
+        else if (keyS.includes('ZOM')) {
+            keySent = 'Zoom';
+        }
+        else if (keyS.includes('SAP')) {
+            keySent = 'SAP';
+        }
+        else if (keyS.includes('ATB')) {
+            keySent = 'AB Replay';
+        }
+        else if (keyS.includes('RPT')) {
+            keySent = 'Repeat';
+        }
+        else if (keyS.includes('PIP')) {
+            keySent = 'PIP';
+        }
+        else if (keyS.includes('HDM')) {
+            keySent = 'Resolution';
+        }
+        else if (keyS.includes('M3D')) {
+            keySent = '3D';
+        }
+        else if (keyS.includes('SEH')) {
+            keySent = 'Picture';
+        }
+        else if (keyS.includes('HDR')) {
+            keySent = 'HDR';
+        }
+        else if (keyS.includes('SUH')) {
+            keySent = 'Subtitle (Hold)';
+        }
+        else if (keyS.includes('INH')) {
+            keySent = 'Information (Hold)';
+        }
+        else if (keyS.includes('RLH')) {
+            keySent = 'Resolution (Hold)';
+        }
+        else if (keyS.includes('AVS')) {
+            keySent = 'AV Sync';
+        }
+        else if (keyS.includes('GPA')) {
+            keySent = 'Gapless Play';
+        }
+        else if (keyS.includes('SRC')) {
+            keySent = 'Input';
+        }
+        else if (keyS.includes('VUP')) {
+            keySent = 'Volume Up';
+        }
+        else if (keyS.includes('VDN')) {
+            keySent = 'Volume Down';
+        }
+        else if (keyS.includes('STC T')) {
+            keySent = 'Elapse Time';
+        }
+        else if (keyS.includes('RST')) {
+            keySent = 'Reset';
+        }
+        else if (keyS.includes('QVM')) {
+            keySent = 'Verbose Mode Status Query';
+        }
+        else if (keyS.includes('QPW')) {
+            keySent = 'Power Status Query';
+        }
+        else if (keyS.includes('QHD')) {
+            keySent = 'Current Resolution Query';
+        }
+        else if (keyS.includes('QPL')) {
+            keySent = 'Playback Status Query';
+        }
+        else if (keyS.includes('QAT')) {
+            keySent = 'Audio Type Query';
+        }
+        else if (keyS.includes('QHS')) {
+            keySent = 'HDR Status Query';
+        }
+        else if (keyS.includes('QIS')) {
+            keySent = 'Input Status Query';
+        }
+        else if (keyS.includes('QVL')) {
+            keySent = 'Volume Status Query';
+        }
+        else if (keyS.includes('QFN')) {
+            keySent = 'Media Name Query';
+        }
+        else if (keyS.includes('QCH')) {
+            keySent = 'Chapter Number Query';
+        }
+        else if (keyS.includes('QCR')) {
+            keySent = 'Chapter Time Remaining Query';
+        }
+        else if (keyS.includes('QCE')) {
+            keySent = 'Chapter Time Elapsed Query';
+        }
+        else if (keyS.includes('QEL')) {
+            keySent = 'Media Time Elapsed Query';
+        }
+        else if (keyS.includes('QRE')) {
+            keySent = 'Media Time Remaining Query';
+        }
+        else if (keyS.includes('QVR')) {
+            keySent = 'Firmware Query';
+        }
+        else {
+            keySent = keyS;
+            keySent += ' Executed';
+            return keySent
+        }
+        if (keyS.includes('OK')) {
+            keySent += ' Executed';
+        }
+        else if (keyS.includes('INVALID')) {
+            keySent += ' Invalid Command';
+        }
+        else {
+            keySent += ' Command';
+        }
+        return keySent
     }
     /////oppo controls/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     pressedButton(name) {
@@ -2402,9 +3013,6 @@ class oppoAccessory {
             case 'TOP MENU':
                 key += 'TTL';
                 break;
-            case 'OPTION':
-                key += 'OPT';
-                break;
             case 'HOME MENU':
                 key += 'HOM';
                 break;
@@ -2428,6 +3036,15 @@ class oppoAccessory {
                 break;
             case 'HDMI OUT':
                 key += 'SIS 2';
+                break;
+            case 'OPTICAL INPUT':
+                key += 'SIS 3';
+                break;
+            case 'COAXIAL INPUT':
+                key += 'SIS 4';
+                break;
+            case 'USB AUDIO INPUT':
+                key += 'SIS 5';
                 break;
             case 'DIMMER':
                 key += 'DIM';
@@ -2529,7 +3146,7 @@ class oppoAccessory {
                 key += 'RST';
                 break;
         }
-        key += '\r';
+        key += '\r\n';
         return key;
     }
     /////////Data Management/////////////////////////////////////////////////////////////
@@ -2554,14 +3171,17 @@ class oppoAccessory {
         let key;
         key = '#SVL ';
         key += number.toString();
-        key += '\r';
+        key += '\r\n';
+        if (number !== 0) {
+            this.targetVolume = number;
+        }
         return key;
     }
     chapterChange(number) {
         let key;
         key = '#SRH C';
         key += number.toString();
-        key += '\r';
+        key += '\r\n';
         return key;
     }
     chapterTime(number) {
@@ -2573,7 +3193,7 @@ class oppoAccessory {
             key = '#SRH T ';
         }
         key += number
-        key += '\r';
+        key += '\r\n';
         return key;
     }
     movieTime(number) {
@@ -2585,7 +3205,7 @@ class oppoAccessory {
             key = '#SRH T ';
         }
         key += number
-        key += '\r';
+        key += '\r\n';
         return key;
     }
     ////Update instructions
@@ -2609,8 +3229,8 @@ class oppoAccessory {
         this.newHDRState([false, false, false]);
         this.newPlayBackState([false, false, false]);
         this.newAudioType([false, false]);
-        this.newInputState = [false, false, false];
-        this.newVolumeState = 0;
+        this.newInputState = [false, false, false, false, false, false];
+        this.newVolumeState = (0);
         this.newInputName('Blu-ray');
         if (this.config.movieControl === true) {
             this.currentMovieProgressFirst = true;
