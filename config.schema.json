@@ -52,6 +52,11 @@
         "type": "boolean",
         "required": false
       },
+      "oppo205": {
+        "title": "Add additional Inputs for Oppo 205",
+        "type": "boolean",
+        "required": false
+      },
       "mediaButtons": {
         "title": "Add Media Remote Control buttons",
         "type": "boolean",
@@ -344,6 +349,9 @@
           "key": "inputButtons"
         },
         {
+          "key": "oppo205"
+        },
+        {
           "key": "movieControl"
         }
       ]
@@ -498,7 +506,7 @@
       "items": [
         {
           "key": "newPlatformUUID",
-          "description": "Enable this if you do not see the accessory when you try to add it to the Home App after deleting it. It will also create a different accesssory every time you chage the Name of the device in Settings. If an old accessory already exists in the Home App you will have to remove it manually."
+          "description": "Enable this if you do not see the accessory when you try to add it to the Home App. It will create a different accesssory every time you chage the Name of the device in Settings. You will have to remove manually the old accessory if it already exists in Homekit."
         }
       ]
     }
