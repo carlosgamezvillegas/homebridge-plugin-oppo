@@ -1,4 +1,11 @@
 # Changelog
+## [2.5.4] - 2021-02-14
+- Bug fixes
+### Added
+- Inputs for Oppo 205
+- Sensor indicating that Oppo is not executing commands being sent
+### Changed
+- Sending and Response Logs
 ## [2.4.7] - 2021-02-06
 - Bug fixes
 ## [2.4.6] - 2021-02-06
