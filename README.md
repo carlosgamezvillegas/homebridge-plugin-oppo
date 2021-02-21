@@ -9,7 +9,7 @@
 
 # What is this?
 
-`homebrige-oppo-udp` is a plugin for homebridge to Control your Oppo 203/205 from your Home app. It should work with Oppo UDP-203 and UDP-205.
+`homebrige-oppo-udp` is a plugin for Homebridge to Control your Oppo 203/205 from your Home app. It should work with Oppo UDP-203 and UDP-205.
 
 
 ### Features
@@ -18,11 +18,13 @@
 * Turn TV on/off
 * Play, Pause, and Stop switches
 * Sound Output as sensors (Dolby Atmos and DTS)
-* HDR Video forma as sensors (HDR, Dolby Vision, and SDR)
+* HDR Video format as sensors (HDR, Dolby Vision, and SDR)
 * Input Selection
+* Not Responding Sensor
 ### Optional Features
 * Volume control (as light bulb, buttons or through iOS remote app) 
 * Media control
+* Chapter and Movie Progress control
 * Navegation Control (Stateless switches)
 * Input control
 * The rests of the Remote buttons (Stateless switches)
@@ -58,8 +60,9 @@ Example configuration:
             "mediaButtons": false,
             "inputButtons":false,
             "movieControl": false,
-            "oppo205":false,
-            "NameOfTheButton":false,
+            "NameOfTheButton": false,
+            "newPlatformUUID":false,
+            "chinoppo":false,
             "platform": "oppoPlugin"
 }
 ]
@@ -106,8 +109,6 @@ Enables volume control to the device as a lightbulg. **Default: false**
 Allows control the playback state of your device. **Default: false**
 - `inputButtons` [optional]
 Adds input buttons. **Default: false**
-- `oppo205` [optional]
-Adds inputs exclusive to Oppo 205. **Default: false**
 - `NameOfTheButton` [optional]
 Adds the button you want to add and can add as many as you want (refer to the button list bellow) **Default: false**
 
@@ -155,9 +156,11 @@ Button Name List is :
 - inputB
 - ejectDiscB
 
-Note: You can add  buttons in the "Navagation Buttons" and "other Buttons" in Settings using Hombridge UI
-- `newPlatformName` [optional]
-Enable this when if you do not see the accessory when you try to add it to the Home App. It will create a  different accessroy every time you chage the Name of the device in Settings. You will have to remove manually an old accessory if it exists in Homekit. **Default: false**
+Note: You can add  buttons in the "Navagation Buttons" and "other Buttons" in Settings using Homebridge UI
+- `newPlatformUUID` [optional]
+Enable this if you do not see the accessory when you try to add it to the Home App after deleting it. It will also create a different accesssory every time you chage the Name of the device in Settings. If an old accessory already exists in the Home App you will have to remove it manually. **Default: false**
+- `chinoppo` [optional]
+Enable this in case the Oppo clone does not turn on with the On/Off button. It sends the Eject command instead. **Default: false**
 
 ## Troubleshooting
 If you have any issues with the plugin or Oppo services then you can run homebridge in debug mode, which will provide some additional information. This might be useful for debugging issues.
@@ -176,12 +179,12 @@ This will enable additional extra log which might be helpful to debug all kind o
 Note: Controls won't update if the plugin does not receive a confirmation message from the device
 
 ## Known Issues
- The Oppo player tends to disconnect from hombridge frequently after a while for no apparent reason. So, to get a stable connection again you need to do the following:
+ The Oppo player tends to disconnect from homebridge frequently after a while for no apparent reason. So, to get a stable connection again you need to do the following:
  - Disable IP Controls and Network Standby
  - Power cycle the device
  - Enable IP Controls and Network Standby
  - Keep the device turned on
- - Reset hombridge 
+ - Reset Homebridge 
 
 ## Special thanks
 To Fernando for his patience and support.
@@ -189,5 +192,4 @@ To Fernando for his patience and support.
 If you have any suggestions/improvements please let know.
 
 Enjoy!!
-
 
