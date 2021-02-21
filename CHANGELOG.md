@@ -1,4 +1,9 @@
 # Changelog
+## [3.0.1] - 2021-02-21
+- Bug fixes
+### Added
+- Support for Oppo Clones (Chinoppos) by sending the EJT command instead of POWER ON to wake up the device
+- When the Oppo is not responding to the TCP/IP Commands, the plugin is going to send them using HTTP Get. Chapter controls, Audio Type, Video Type, and others are not going to work when this happens.
 ## [2.5.4] - 2021-02-14
 - Bug fixes
 ### Added
