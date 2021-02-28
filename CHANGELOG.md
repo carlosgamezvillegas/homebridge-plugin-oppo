@@ -1,4 +1,6 @@
 # Changelog
+## [3.0.3] - 2021-02-27
+- Bug fixes
 ## [3.0.1] - 2021-02-21
 - Bug fixes
 ### Added
