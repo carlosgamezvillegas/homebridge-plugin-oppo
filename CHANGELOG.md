@@ -1,4 +1,8 @@
 # Changelog
+## [3.1.0] - 2021-03-07
+- Bug fixes
+### Changed
+- Most of the commands are sent though HTTP now. HTTP is more reliable and even when the Sensor "Oppo Not Responding" is on, the device will continue to excute most of the commands. When "Oppo Not Responding" is on, query requests and other commands are not going to work. 
 ## [3.0.3] - 2021-02-27
 - Bug fixes
 ## [3.0.1] - 2021-02-21
