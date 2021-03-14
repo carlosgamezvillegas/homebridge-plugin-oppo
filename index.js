@@ -66,7 +66,7 @@ class oppoAccessory {
         this.accessory = accessory;
         this.config = platform.config;
         this.OPPO_IP = this.config.ip;
-        this.localIP = '192.168.86.45'
+        this.localIP = '192.168.0.2'
         //////Initial Switch and sensors state///////////////////////////////////////////////////////////////////////////////////////////////
         this.powerState = false;
         this.playBackState = [false, false, false];
@@ -87,6 +87,7 @@ class oppoAccessory {
         this.firstHttp = true;
         this.commandChain = false;
         this.key = this.query('VERBOSE MODE');
+        this.httpNotResponding = 0;
         /////MovieConstants
         this.currentMovieProgress = 0;
         this.currentChapterSelector = [0, 0];
@@ -1725,9 +1726,11 @@ class oppoAccessory {
                 this.commandChain = false;
             }
             if (this.client.readyState === 'Closed') {
+                this.client.end();
                 delete this.client
                 this.netConnect()
             }
+            this.platform.log.debug('Socket writable: ', this.client.writable);
             this.platform.log.debug('Number of reconnection tries: ' + this.reconnectionCounter);
             this.service.updateCharacteristic(this.platform.Characteristic.On, this.powerState);
             this.dolbyVision.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[0]);
@@ -1804,7 +1807,8 @@ class oppoAccessory {
             this.platform.log.debug(`Error: ${e}`);
             this.platform.log.debug(`Trying to reconnect to ${this.config.name} after an error`);
             this.platform.log.debug(`Turn on ${this.config.name} and check the IP Address`);
-            this.client.removeAllListeners()
+            this.client.end();
+            this.client.removeAllListeners();
             this.client.destroy();
             this.reconnectionCounter += 1;
             this.firstConnection = true;
@@ -1818,7 +1822,7 @@ class oppoAccessory {
                 this.connectionLimit = true;
                 this.connectionLimitStatus = 1;
                 if (this.turnOffAllUsed === false) {
-                    this.turnOffAll()
+                    this.turnOffAll();
                     this.turnOffAllUsed = true;
                 }
             }
@@ -1830,15 +1834,16 @@ class oppoAccessory {
             this.firstConnection = true;
             this.currentMovieProgressFirst = true;
             this.chapterFirstUpdate = true;
-            this.client.removeAllListeners()
+            this.client.end();
+            this.client.removeAllListeners();
             this.client.destroy();
             setTimeout(() => {
                 delete this.client
-                this.netConnect()
+                this.netConnect();
             }, this.reconnectionWait);
             if (this.reconnectionCounter > this.reconnectionTry) {
                 if (this.turnOffAllUsed === false) {
-                    this.turnOffAll()
+                    this.turnOffAll();
                     this.turnOffAllUsed = true;
                 }
             }
@@ -1849,15 +1854,16 @@ class oppoAccessory {
             this.firstConnection = true;
             this.currentMovieProgressFirst = true;
             this.chapterFirstUpdate = true;
-            this.client.removeAllListeners()
+            this.client.end();
+            this.client.removeAllListeners();
             this.client.destroy();
             setTimeout(() => {
                 delete this.client
-                this.netConnect()
+                this.netConnect();
             }, this.reconnectionWait);
             if (this.reconnectionCounter > this.reconnectionTry) {
                 if (this.turnOffAllUsed === false) {
-                    this.turnOffAll()
+                    this.turnOffAll();
                     this.turnOffAllUsed = true;
                 }
             }
@@ -1889,8 +1895,7 @@ class oppoAccessory {
         callback(null);
     }
     getOn(callback) {
-        let isOn = false;
-        isOn = this.powerState;
+        let isOn = this.powerState;
         this.platform.log.debug('Get Power ->', isOn);
         callback(null, isOn);
     }
@@ -1945,10 +1950,10 @@ class oppoAccessory {
                     && !command.includes('SUH') && !command.includes('SRC') && !command.includes('QFN') && !command.includes('QAT')) {
                     this.reconnectionCounter += 1;
                     if (this.client.readyState === 'Closed') {
-                        delete this.client
+                        this.client.end();
                         this.key = press[i];
                         this.keyReset();
-                        delete this.client
+                        delete this.client;
                         this.netConnect();
                     }
                     else {
@@ -2001,6 +2006,9 @@ class oppoAccessory {
                     if (this.reconnectionCounter < this.reconnectionTry) {
                         this.newResponse = 'by HTTP';
                         this.sendHttp(this.makeUrl(press[i]), (press[i]));
+                        if (this.httpNotResponding > 3) {
+                            this.client.write(press[i]);
+                        }
                     }
                 }
             }
@@ -2008,6 +2016,9 @@ class oppoAccessory {
                 if (this.reconnectionCounter < this.reconnectionTry) {
                     this.newResponse = 'by HTTP';
                     this.sendHttp(this.makeUrl(press[i]), (press[i]));
+                    if (this.httpNotResponding > 3) {
+                        this.client.write(press[i]);
+                    }
                 }
             }
             if (this.reconnectionCounter >= this.reconnectionTry) {
@@ -2015,6 +2026,9 @@ class oppoAccessory {
                 if (!press[i].includes("QFN") && !press[i].includes("QPW") && !press[i].includes("#QVM")
                     && !press[i].includes("QCE") && !press[i].includes("QCH") && !press[i].includes("PON")) {
                     this.sendHttp(this.makeUrl(press[i]), (press[i]));
+                    if (this.httpNotResponding > 3) {
+                        this.client.write(press[i]);
+                    }
                 }
                 else {
                 }
@@ -2022,17 +2036,18 @@ class oppoAccessory {
             i += 1;
         }
     }
-    ///////////////Send Http Command/////////////////////
+    ///////Send HTTP command///////////////////////////
     sendHttp(url, key) {
+        this.httpNotResponding += 1;
         request.get(url, (res) => {
-            const { statusCode } = res;
             res.setEncoding('utf8');
             let rawData = '';
             res.on('data', (chunk) => { rawData += chunk; });
             res.on('end', () => {
                 try {
-                    const parsedData = JSON.parse(rawData);
-                    this.httpEventDecoder(parsedData, key)
+                    let parsedData = JSON.parse(rawData);
+                    this.httpNotResponding = 0;
+                    this.httpEventDecoder(parsedData, key);
                 } catch (e) {
                     //console.error(e.message);
                 }
@@ -2041,8 +2056,9 @@ class oppoAccessory {
             // console.error(`Got error: ${e.message}`);
         });
     }
-    ////////////////////////////Make URL for HTTP
+    //////////////////Make URL for HTTP///////////////
     makeUrl(key) {
+        this.platform.log.debug('HTTP counter: ' + this.httpNotResponding)
         if (key.includes("SRH")) {
             key = key.substring(1);
             let url1 = "http://" + this.OPPO_IP + ":436/setplaytime?";
@@ -2064,52 +2080,62 @@ class oppoAccessory {
             url = url + '"m":' + String(parseInt(newKey[1], 10)) + ',';
             url = url + '"s":' + String(parseInt(newKey[2], 10)) + '}';
             url = url1 + url
+            this.platform.log.debug(url);
             return url
         }
         else if (key.includes('QRE') || key.includes('MTR')) {
             let url = "http://" + this.OPPO_IP + ":436/getplayingtime";
             this.platform.log(`Sending: ${this.commandName(key)} ${this.newResponse}`);
+            this.platform.log.debug(url);
             return url
         }
         else if (key.includes('QPL') || key.includes('QIS')) {
             let url = "http://" + this.OPPO_IP + ":436/getglobalinfo";
             this.platform.log(`Sending: ${this.commandName(key)} ${this.newResponse}`);
+            this.platform.log.debug(url);
             return url
         }
         else if (key.includes('QVL')) {
             let url = "http://" + this.OPPO_IP + ":436/getvolume";
             this.platform.log.debug(`Sending: ${this.commandName(key)} ${this.newResponse}`);
+            this.platform.log.debug(url);
             return url
         }
         else if (key.includes('QPW')) {
             let url = "http://" + this.OPPO_IP + ":436/getglobalinfo";
             this.platform.log.debug(`Sending: ${this.commandName(key)} ${this.newResponse}`);
+            this.platform.log.debug(url);
             return url
         }
         else if (key.includes('QFN')) {
             let url = "http://" + this.OPPO_IP + ":436/getmovieplayinfo";
             this.platform.log.debug(`Sending: Media Name Query by HTTP`);
+            this.platform.log.debug(url);
             return url
         }
         else if (key.includes('SIS')) {
             let url = "http://" + this.OPPO_IP + ":436/sendremotekey?%7B%22key%22%3A%22SRC%22%7D";
             this.platform.log(`Sending: Input Change ${this.newResponse}`);
+            this.platform.log.debug(url);
             return url
         }
         else if (key.includes('SVL')) {
             let newKey = key.split(' ')
             let url = "http://" + this.OPPO_IP + ":436/setvolume?%7B%22cur_vol%22%3A" + newKey[1] + "%2C%22connectId%22%3A%22" + this.localIP + "%22%7D";
             this.platform.log(`Sending: Volume Change to ${this.newResponse}`);
+            this.platform.log.debug(url);
             return url
         }
         else if (key.includes('PON')) {
             let url = "http://" + this.OPPO_IP + ":436/signin?%7B%22appIconType%22%3A1%2C%22appIpAddress%22%3A%22" + this.localIP + "%22%7D";
             this.platform.log(`Sending: ${this.commandName(key)} ${this.newResponse}`);
+            this.platform.log.debug(url);
             return url
         }
         else if (key.includes('QAT')) {
             let url = "http://" + this.OPPO_IP + ":436/getaudiomenulist";
             this.platform.log.debug(`Sending: ${this.commandName(key)} ${this.newResponse}`);
+            this.platform.log.debug(url);
             return url
         }
         else {
@@ -2120,11 +2146,12 @@ class oppoAccessory {
             if (!Key.includes('QVM')) {
                 this.platform.log(`Sending: ${this.commandName(key)} ${this.newResponse}`);
             }
+            this.platform.log.debug(url);
             return url
         }
     }
     //////////Current Status//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    newVolumeState(newVolumeNum) {
+    newVolumeStatus(newVolumeNum) {
         this.currentVolume = newVolumeNum;
         if (newVolumeNum === 0) {
             this.currentMuteState = true;
@@ -2317,9 +2344,21 @@ class oppoAccessory {
                     if (rawData.playinfo.file_path === 'AVCHD') {
                         let newNameInput = rawData.playinfo.bd_file_path.split('/');
                         this.platform.log.debug(newNameInput);
-                        this.platform.log.debug(Object.keys(newNameInput).length - 3);
-                        this.platform.log(`Response: ${Object.values(newNameInput)[Object.keys(newNameInput).length - 3]} is Playing`);
-                        this.newInputName(Object.values(newNameInput)[Object.keys(newNameInput).length - 3]);
+                        let nameInput = '';
+                        if (Object.values(newNameInput)[Object.keys(newNameInput).length - 1] === 'BDMV' && Object.values(newNameInput)[Object.keys(newNameInput).length - 2] === 'AVCHD') {
+                            nameInput = Object.values(newNameInput)[Object.keys(newNameInput).length - 3];
+                        }
+                        else if (Object.values(newNameInput)[Object.keys(newNameInput).length - 1] === 'BDMV' && !Object.values(newNameInput)[Object.keys(newNameInput).length - 2] === 'AVCHD') {
+                            nameInput = Object.values(newNameInput)[Object.keys(newNameInput).length - 2];
+                        }
+                        else if (Object.values(newNameInput)[Object.keys(newNameInput).length - 1] === 'AVCHD') {
+                            nameInput = Object.values(newNameInput)[Object.keys(newNameInput).length - 2];
+                        }
+                        else {
+                            nameInput = Object.values(newNameInput)[Object.keys(newNameInput).length - 1];
+                        }
+                        this.platform.log(`Response: ${nameInput} is Playing`);
+                        this.newInputName(nameInput);
                     }
                 }
                 if (typeof (rawData.playinfo.file_name) !== 'undefined') {
@@ -2419,9 +2458,9 @@ class oppoAccessory {
     }
     ///Event decoder///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     eventDecoder(dataReceived) {
-        const str = (`${dataReceived}`);
+        let str = (`${dataReceived}`);
         this.platform.log.debug(str);
-        const res = str.split('@');
+        let res = str.split('@');
         let i = 0;
         while (i < res.length) {
             this.platform.log.debug(res[i])
@@ -2436,7 +2475,6 @@ class oppoAccessory {
                     this.sending([this.pressedButton('VERBOSE MODE 3')]);
                 }
                 else {
-                    this.sending([this.pressedButton('RESET')]);
                     setTimeout(() => {
                         this.sending([this.query('POWER STATUS')]);
                     }, 200);
@@ -2449,7 +2487,6 @@ class oppoAccessory {
                     this.sending([this.pressedButton('VERBOSE MODE 3')]);
                 }
                 else {
-                    this.sending([this.pressedButton('RESET')]);
                     setTimeout(() => {
                         this.sending([this.query('POWER STATUS')]);
                     }, 200);
@@ -2459,7 +2496,6 @@ class oppoAccessory {
                 this.resetCouter()
                 this.platform.log.debug(`Response: Verbose Mode 3`);
                 if (this.config.movieControl === true) {
-                    this.sending([this.pressedButton('RESET')]);
                     setTimeout(() => {
                         this.sending([this.query('POWER STATUS')]);
                     }, 200);
@@ -2497,7 +2533,7 @@ class oppoAccessory {
                 this.newPlayBackState([false, false, false]);
                 this.newHDRState([false, false, false]);
                 this.newAudioType([false, false]);
-                this.newVolumeState(0);
+                this.newVolumeStatus(0);
                 this.newInputName('Blu-ray');
                 this.newInputState([false, false, false, false, false, false]);
                 if (this.config.movieControl === true) {
@@ -2515,7 +2551,7 @@ class oppoAccessory {
                 this.newPlayBackState([false, false, false]);
                 this.newHDRState([false, false, false]);
                 this.newAudioType([false, false]);
-                this.newVolumeState(0);
+                this.newVolumeStatus(0);
                 this.newInputName('Blu-ray');
                 this.newInputState([false, false, false, false, false, false]);
                 if (this.config.movieControl === true) {
@@ -2534,7 +2570,7 @@ class oppoAccessory {
                 this.newPlayBackState([false, false, false]);
                 this.newHDRState([false, false, false]);
                 this.newAudioType([false, false]);
-                this.newVolumeState(0);
+                this.newVolumeStatus(0);
                 this.newInputName('Blu-ray');
                 this.newInputState([false, false, false, false, false, false]);
                 if (this.config.movieControl === true) {
@@ -2553,13 +2589,12 @@ class oppoAccessory {
                         if (this.commandChain === false) {
                             setTimeout(() => {
                                 this.commandChain = true;
-                                this.sending([this.pressedButton('RESET')]);
                                 setTimeout(() => {
                                     this.sending([this.query('INPUT STATUS')]);
                                 }, 200);
                                 this.resetCommandChain();
                             }, 3000);
-                            this.platform.log("Chain of commands starting in 5 seconds");
+                            this.platform.log("Chain of commands starting in 3 seconds");
                         }
                         else {
                             this.platform.log("Chain of command not finished yet")
@@ -2571,27 +2606,7 @@ class oppoAccessory {
                         }, 3000);
                     }
                 }
-                /*
-                if (this.reconnectionCounter < this.reconnectionTry) {
-                    if (this.commandChain === false) {
-        
-                        setTimeout(() => {
-                                            this.commandChain = true;
-                            this.sending([this.query('INPUT STATUS')]);
-                            this.resetCommandChain();
-                        }, 5000);
-                        this.platform.log("Chain of Commands Started");
-                    }
-                    else {
-                        this.platform.log("Chain of command not finished yet")
-                    }
-                }
-                if (this.reconnectionCounter >= this.reconnectionTry) {
-                    setTimeout(() => {
-                        this.sending([this.query('PLAYBACK STATUS')]);
-                    }, 5000);
-                }
-                */
+
             }
             else if (res[i].includes('PON OK')) {
                 this.platform.log(`Response: ${this.commandName(res[i])}`);
@@ -2608,7 +2623,6 @@ class oppoAccessory {
                     if (this.reconnectionCounter < this.reconnectionTry) {
                         if (this.commandChain === false) {
                             this.commandChain = true;
-                            this.sending([this.pressedButton('RESET')]);
                             setTimeout(() => {
                                 this.sending([this.query('INPUT STATUS')]);
                             }, 200);
@@ -2716,17 +2730,17 @@ class oppoAccessory {
             else if (res[i].includes('UVL')) {
                 if (res[i].includes('UMT')) {
                     if (this.powerState === false) {
-                        this.newVolumeState(0);
+                        this.newVolumeStatus(0);
                     }
-                    else if (this.powerState === true) {
+                    else {
                         this.platform.log.debug(`Response: Unmuted`);
-                        this.newVolumeState(this.targetVolume);
+                        this.newVolumeStatus(this.targetVolume);
                     }
 
                 }
                 else if (!res[i].includes('MUT')) {
-                    let numberOnly = res[i].replace(/^\D+/g, '')
-                    this.newVolumeState(parseInt(numberOnly, 10))
+                    let numberOnly = res[i].replace(/^\D+/g, '');
+                    this.newVolumeStatus(parseInt(numberOnly, 10));
                     this.targetVolume = numberOnly;
                     if (this.powerState === true) {
                         this.platform.log(`Response: Volume Level set to ${numberOnly}`);
@@ -2734,24 +2748,24 @@ class oppoAccessory {
                 }
                 else {
                     this.platform.log(`Response: Muted`);
-                    this.newVolumeState(0);
+                    this.newVolumeStatus(0);
                 }
             }
             else if (res[i].includes('QVL')) {
                 this.platform.log(`Response: ${this.commandName(res[i])}`);
                 if (res[i].includes('UMT')) {
-                    this.newVolumeState(this.targetVolume);
+                    this.newVolumeStatus(this.targetVolume);
                     this.resetCouter()
                 }
                 else if (!res[i].includes('MUT')) {
-                    let numberOnly = res[i].replace(/^\D+/g, '')
-                    this.newVolumeState(parseInt(numberOnly, 10))
+                    let numberOnly = res[i].replace(/^\D+/g, '');
+                    this.newVolumeStatus(parseInt(numberOnly, 10));
                     this.targetVolume = numberOnly;
                     this.resetCouter()
                 }
                 else {
-                    this.newVolumeState(0)
-                    this.resetCouter()
+                    this.newVolumeStatus(0);
+                    this.resetCouter();
                 }
                 if (this.commandChain === true) {
                     this.platform.log("Second chain response received")
@@ -2761,15 +2775,15 @@ class oppoAccessory {
             else if (res[i].includes('SVL')) {
                 if (res[i].includes('MUTE')) {
                     this.platform.log(`Response: Mute Executed`);
-                    this.newVolumeState(0);
-                    this.resetCouter()
+                    this.newVolumeStatus(0);
+                    this.resetCouter();
                 }
                 else {
                     let numberOnly = res[i].replace(/^\D+/g, '')
                     this.platform.log(`Response: Volume set to ${numberOnly}`);
-                    this.newVolumeState(parseInt(numberOnly, 10))
+                    this.newVolumeStatus(parseInt(numberOnly, 10));
                     this.targetVolume = numberOnly;
-                    this.resetCouter()
+                    this.resetCouter();
                 }
             }
 
@@ -2798,12 +2812,12 @@ class oppoAccessory {
                 this.platform.log(`Response: Play Executed ${this.newResponse} (UPL)`);
                 this.newPlayBackState([true, false, false]);
                 this.sending([this.query('MTR')]);
-                if (this.inputName === 'Blu-ray') {
-                    this.sending([this.query('MEDIA NAME')]);
-                }
                 setTimeout(() => {
                     this.sending([this.query('HDR STATUS')]);
                 }, 2000);
+                if (this.inputName === 'Blu-ray') {
+                    this.sending([this.query('MEDIA NAME')]);
+                }
                 if (this.reconnectionCounter >= this.reconnectionTry) {
                     this.sending([this.query('AUDIO TYPE')]);
                 }
@@ -2918,7 +2932,6 @@ class oppoAccessory {
                 this.newHDRState([false, false, true]);
                 this.newAudioType([false, false]);
                 this.newInputName('Blu-ray');
-                this.reconnectionCounter = 0;
                 if (this.config.movieControl === true) {
                     this.currentMovieProgressFirst = true;
                     this.chapterFirstUpdate = true;
@@ -2926,8 +2939,7 @@ class oppoAccessory {
                     this.newMovieTime(0);
                     this.newChapterTime(0);
                 }
-                if (this.firstConnection === true) {
-                    //this.sending([this.pressedButton('RESET')]);
+                if (this.currentVolume === 0) {
                     if (this.commandChain === false) {
                         this.sending([this.query('VOLUME STATUS')]);
                     }
@@ -3079,7 +3091,7 @@ class oppoAccessory {
     ///Query////////////////////////////////////////////////////////////////////////////////////////////////////
     queryKeys(buttons) {
         buttons.length;
-        const keys = [''];
+        let keys = [''];
         let i = 0;
         while (i < buttons.length) {
             keys[i] = this.query(buttons[i]);
@@ -3644,9 +3656,9 @@ class oppoAccessory {
         return timeDate
     }
     secondsToTime(seconds) {
-        var date = new Date(0);
+        let date = new Date(0);
         date.setSeconds(parseInt(seconds)); // specify value for SECONDS here
-        var timeString = date.toISOString().substr(11, 8);
+        let timeString = date.toISOString().substr(11, 8);
         return timeString
     }
     /////Volume, chapter, Movie time change //////////////////////////////////////////////
@@ -3700,8 +3712,8 @@ class oppoAccessory {
         this.firstHttp = true;
     }
     updateAll() {
-        const queryAll = ['POWER STATUS', 'PLAYBACK STATUS', 'HDR STATUS', 'AUDIO TYPE'];
-        const KEYS = this.queryKeys(queryAll);
+        let queryAll = ['POWER STATUS', 'PLAYBACK STATUS', 'HDR STATUS', 'AUDIO TYPE'];
+        let KEYS = this.queryKeys(queryAll);
         return KEYS;
     }
     updatePlayback() {
@@ -3710,8 +3722,8 @@ class oppoAccessory {
         return KEYS;
     }
     updateHDRStatus() {
-        const queryHDR = ['HDR STATUS'];
-        const KEYS = this.queryKeys(queryHDR);
+        let queryHDR = ['HDR STATUS'];
+        let KEYS = this.queryKeys(queryHDR);
         return KEYS;
     }
     turnOffAll() {
@@ -3719,8 +3731,8 @@ class oppoAccessory {
         this.newHDRState([false, false, false]);
         this.newPlayBackState([false, false, false]);
         this.newAudioType([false, false]);
-        this.newInputState = [false, false, false, false, false, false];
-        this.newVolumeState = (0);
+        this.newInputState([false, false, false, false, false, false]);
+        this.newVolumeStatus(0);
         this.newInputName('Blu-ray');
         if (this.config.movieControl === true) {
             this.currentMovieProgressFirst = true;
