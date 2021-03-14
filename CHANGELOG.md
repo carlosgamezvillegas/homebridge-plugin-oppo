@@ -1,4 +1,8 @@
 # Changelog
+## [3.1.1] - 2021-03-14
+- Movie name bug fixed
+### Changed
+- TCP commands are going to be sent when HTTP commands are not working. Note: TCP connection drops the connection when the device is connected through Ethernet more often than when it is connected through WiFi.
 ## [3.1.0] - 2021-03-07
 - Bug fixes
 ### Changed
