@@ -1,7 +1,7 @@
 {
   "displayName": "Homebridge Oppo 203/205",
   "name": "homebridge-oppo-udp",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "description": "Homebridge Plugin to control your Oppo 203/205.",
   "license": "MIT",
   "repository": {
@@ -19,11 +19,17 @@
   "keywords": [
     "homebridge-plugin",
     "homebridge-oppo",
+    "homebridge",
     "oppo",
     "oppo-203",
     "oppo-205",
     "homekit",
-    "blu-ray"
+    "blu-ray",
+    "chinoppo",
+    "M9702",
+    "M9201",
+    "M9203",
+    "M9205"
   ],
   "dependencies": {},
   "devDependencies": {
