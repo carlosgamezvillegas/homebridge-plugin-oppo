@@ -48,7 +48,7 @@
         "required": false
       },
       "volume": {
-        "title": "Add Volume service as a lightbulb",
+        "title": "Add Volume service as a dimmer",
         "type": "boolean",
         "required": false
       },
@@ -58,12 +58,32 @@
         "required": false
       },
       "mediaButtons": {
-        "title": "Add Media Remote Control buttons",
+        "title": "Add Media Remote Control buttons (Next, Previous, Forward, Rewind)",
         "type": "boolean",
         "required": false
       },
       "movieControl": {
-        "title": "Add Movie Progress, Chapter Selector, Chapter Progress  and as lightbulbs",
+        "title": "Add Movie Progress as a dimmer",
+        "type": "boolean",
+        "required": false
+      },
+      "chapterControl": {
+        "title": "Add Chapter Progress as a dimmer",
+        "type": "boolean",
+        "required": false
+      },
+      "chapterSelector": {
+        "title": "Add Chapter Selector as a dimmer",
+        "type": "boolean",
+        "required": false
+      },
+      "mediaAudioVideoState": {
+        "title": "Add the Audio and Video State as motion sensors",
+        "type": "boolean",
+        "required": false
+      },
+      "chinoppo": {
+        "title": "Add Wake Up support for Oppo clones (Chinoppos)",
         "type": "boolean",
         "required": false
       },
@@ -277,6 +297,11 @@
         "type": "boolean",
         "required": false
       },
+      "powerB": {
+        "title": "Add the Power button",
+        "type": "boolean",
+        "required": false
+      },
       "ejectDiscB": {
         "title": "Add the Eject/Close button",
         "type": "boolean",
@@ -353,6 +378,15 @@
         },
         {
           "key": "movieControl"
+        },
+        {
+          "key": "chapterControl"
+        },
+        {
+          "key": "chapterSelector"
+        },
+        {
+          "key": "mediaAudioVideoState"
         }
       ]
     },
@@ -423,6 +457,9 @@
       "items": [
         {
           "key": "dimmerB"
+        },
+        {
+          "key": "powerB"
         },
         {
           "key": "pureAudioB"
@@ -505,8 +542,12 @@
       "expanded": false,
       "items": [
         {
+          "key": "chinoppo",
+          "description": "Enable this in case the Oppo clone does not turn on with the On/Off button"
+        },
+        {
           "key": "newPlatformUUID",
-          "description": "Enable this if you do not see the accessory when you try to add it to the Home App. It will create a different accesssory every time you chage the Name of the device in Settings. You will have to remove manually the old accessory if it already exists in Homekit."
+          "description": "Enable this if you do not see the accessory when you try to add it to the Home App. Note that it will create a new accesssory if the name of the device is changed in Settings. Old accesories must be removed manually in the Home app."
         }
       ]
     }
