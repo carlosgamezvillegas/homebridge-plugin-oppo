@@ -1,4 +1,18 @@
 # Changelog
+## [3.2.0] - 2022-01-06
+- Bug fixes
+### Changed
+- Improvements in text
+- Improvemtns in Current State of the device
+- Power Switch is optional
+### Added
+- Sound and Video State Sensors are optional
+- Movie Progress, Chapter Progress, and Chapter Selector can be added individually
+### Note
+- To avoid any HTTP communication issues connect to the 
+
+## [3.1.3] - 2021-03-27
+- Bug fixes
 ## [3.1.1] - 2021-03-14
 - Movie name bug fixed
 ### Changed
@@ -6,8 +20,10 @@
 ## [3.1.0] - 2021-03-07
 - Bug fixes
 ### Changed
-- Most of the commands are sent though HTTP now. HTTP is more reliable and even when the Sensor "Oppo Not Responding" is on, the device will continue to excute most of the commands. When "Oppo Not Responding" is on, query requests and other commands are not going to work. 
+- Most of the commands are sent though HTTP now. HTTP is more reliable and even when the Sensor "Oppo Not Responding" is on, the device will continue to excute most of the commands. When "Oppo Not Responding" is on, query requests and other request are not going to work. 
 ## [3.0.3] - 2021-02-27
+- Bug fixes
+## [3.0.2] - 2021-02-22
 - Bug fixes
 ## [3.0.1] - 2021-02-21
 - Bug fixes
@@ -18,13 +34,13 @@
 - Bug fixes
 ### Added
 - Inputs for Oppo 205
-- Sensor indicating that Oppo is not executing commands being sent
+- Sensor indicating that the device is not responding
 ### Changed
 - Sending and Response Logs
 ## [2.4.7] - 2021-02-06
 - Bug fixes
 ## [2.4.6] - 2021-02-06
-- Bugs fixes to the Movie and Chapter Progress status
+- Bug fixes to the Movie and Chapter Progress status
 ### Added
 - The ability to create an accessory with a different UUID
 ## [2.4.5] - 2021-01-30
@@ -33,8 +49,8 @@
 - Bug fixes
 ## [2.4.0] - 2021-01-17
 ### Added
-- Movie and Chapter progress as Lightbulb Dimmer
-- Chapter selector as Lightbulb Dimmer
+- Movie and Chapter progress as a dimmer
+- Chapter selector as dimmer
 ### Changed
 - Improved Oppo status reporting
 - Improved error logging
