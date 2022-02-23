@@ -2586,7 +2586,7 @@ class oppoAccessory {
             else if (res[i].includes('QVM OK 2')) {
                 this.resetCouter();
                 this.platform.log.debug(`Response: Verbose Mode 2`);
-                if (this.config.movieControl === true || this.config.chapterControl === truethis.config.chapterSelector === true) {
+                if (this.config.movieControl === true || this.config.chapterControl === true || this.config.chapterSelector === true) {
                     this.sending([this.pressedButton('VERBOSE MODE 3')]);
                 }
                 else {
@@ -2598,7 +2598,7 @@ class oppoAccessory {
             else if (res[i].includes('SVM OK 2')) {
                 this.resetCouter();
                 this.platform.log.debug(`Response: Verbose Mode 2 Executed`);
-                if (this.config.movieControl === true || this.config.chapterControl === truethis.config.chapterSelector === true) {
+                if (this.config.movieControl === true || this.config.chapterControl === true || this.config.chapterSelector === true) {
                     this.sending([this.pressedButton('VERBOSE MODE 3')]);
                 }
                 else {
@@ -2610,7 +2610,7 @@ class oppoAccessory {
             else if (res[i].includes('QVM OK 3')) {
                 this.resetCouter();
                 this.platform.log.debug(`Response: Verbose Mode 3`);
-                if (this.config.movieControl === true || this.config.chapterControl === truethis.config.chapterSelector === true) {
+                if (this.config.movieControl === true || this.config.chapterControl === true ||this.config.chapterSelector === true) {
                     setTimeout(() => {
                         this.sending([this.query('POWER STATUS')]);
                     }, 200);
@@ -2622,7 +2622,7 @@ class oppoAccessory {
             else if (res[i].includes('SVM OK 3')) {
                 this.resetCouter();
                 this.platform.log.debug(`Response: Verbose Mode 3 Executed`);
-                if (this.config.movieControl === true || this.config.chapterControl === truethis.config.chapterSelector === true) {
+                if (this.config.movieControl === true || this.config.chapterControl === true ||this.config.chapterSelector === true) {
                     setTimeout(() => {
                         this.sending([this.query('POWER STATUS')]);
                     }, 200);
@@ -2634,7 +2634,7 @@ class oppoAccessory {
             else if (res[i].includes('QVM OK 0')) {
                 this.resetCouter();
                 this.platform.log.debug(`Response: Verbose Mode 0`);
-                if (this.config.movieControl === true || this.config.chapterControl === truethis.config.chapterSelector === true) {
+                if (this.config.movieControl === true || this.config.chapterControl === true || this.config.chapterSelector === true) {
                     this.sending([this.pressedButton('VERBOSE MODE 3')]);
                 }
                 else {
