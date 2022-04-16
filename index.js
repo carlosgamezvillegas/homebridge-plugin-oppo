@@ -68,6 +68,7 @@ class oppoAccessory {
         this.config = platform.config;
         this.OPPO_IP = this.config.ip;
         this.localIP = '192.168.0.2'
+        this.statelessTimeOut = 1000;
         //////Initial Switch and sensors state///////////////////////////////////////////////////////////////////////////////////////////////
         this.powerState = false;
         this.playBackState = [false, false, false];
@@ -89,6 +90,8 @@ class oppoAccessory {
         this.commandChain = false;
         this.key = this.query('VERBOSE MODE');
         this.httpNotResponding = 0;
+        this.turnOffCommandOn = false;
+        this.turnOnCommandOn = false;
         /////MovieConstants
         this.currentMovieProgress = 0;
         this.currentChapterSelector = [0, 0];
@@ -203,17 +206,38 @@ class oppoAccessory {
             .on('set', (newValue, callback) => {
                 this.platform.log.debug('Set Oppo Active to: ' + newValue);
                 if (newValue === 1) {
+                    this.turnOffCommandOn = false;
+                    this.turnOnCommandOn = true;
                     this.sending([this.pressedButton('POWER ON')]);
+                    if (this.turnOnCommandOn === true) {
+                        setTimeout(() => {
+                            this.turnOnCommandOn = false;
+                        }, 3000);
+                    }
                 }
                 else {
+                    this.turnOnCommandOn = false;
+                    this.turnOffCommandOn = true;
                     if (this.playBackState[0] === true) {
-                        this.sending([this.pressedButton('PAUSE')]);
+                        this.sending([this.pressedButton('STOP')]);
                         setTimeout(() => {
+                            this.turnOffAll();
                             this.sending([this.pressedButton('POWER OFF')]);
-                        }, 200);
+                            if (this.turnOffCommandOn === true) {
+                                setTimeout(() => {
+                                    this.turnOffCommandOn = false;
+                                }, 3000);
+                            }
+                        }, 500);
                     }
                     else {
+                        this.turnOffAll();
                         this.sending([this.pressedButton('POWER OFF')]);
+                        if (this.turnOffCommandOn === true) {
+                            setTimeout(() => {
+                                this.turnOffCommandOn = false;
+                            }, 3000);
+                        }
                     }
                 }
                 callback(null);
@@ -792,7 +816,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('CURSOR UP')]);
                     }
-                    this.cursorUp.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.cursorUp.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -810,7 +836,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('CURSOR DOWN')]);
                     }
-                    this.cursorDown.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.cursorDown.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -828,7 +856,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('CURSOR LEFT')]);
                     }
-                    this.cursorLeft.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.cursorLeft.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -846,7 +876,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('CURSOR RIGHT')]);
                     }
-                    this.cursorRight.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.cursorRight.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -864,7 +896,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('CURSOR ENTER')]);
                     }
-                    this.cursorEnter.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.cursorEnter.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -882,7 +916,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('MENU')]);
                     }
-                    this.menu.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.menu.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -900,7 +936,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('BACK')]);
                     }
-                    this.backButton.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.backButton.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -918,14 +956,16 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('CLEAR')]);
                     }
-                    this.clear.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.clear.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
-        if (this.config.topMenu === true) {
-            this.topMenu = this.accessory.getService('Top Menu') ||
+        if (this.config.topMenuB === true) {
+            this.topMenuB = this.accessory.getService('Top Menu') ||
                 this.accessory.addService(this.platform.Service.Switch, 'Top Menu', 'YourUniqueIdentifier-41');
-            this.topMenu.getCharacteristic(this.platform.Characteristic.On)
+            this.topMenuB.getCharacteristic(this.platform.Characteristic.On)
                 .on('get', (callback) => {
                     this.platform.log.debug('Top Menu GET On');
                     let currentValue = false;
@@ -936,7 +976,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('TOP MENU')]);
                     }
-                    this.topMenu.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.topMenuB.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -954,7 +996,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('OPTION')]);
                     }
-                    this.option.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.option.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -972,7 +1016,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('HOME MENU')]);
                     }
-                    this.homeMenu.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.homeMenu.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -990,7 +1036,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('INFO')]);
                     }
-                    this.infoButton.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.infoButton.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1008,7 +1056,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('SETUP')]);
                     }
-                    this.setup.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.setup.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1026,7 +1076,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('GO TO')]);
                     }
-                    this.goTo.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.goTo.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1044,7 +1096,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('PAGE UP')]);
                     }
-                    this.pageUp.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.pageUp.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1062,7 +1116,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('PAGE DOWN')]);
                     }
-                    this.pageDown.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.pageDown.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1080,7 +1136,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('POP-UP MENU')]);
                     }
-                    this.popUpMenu.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.popUpMenu.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1099,7 +1157,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('PREVIOUS')]);
                     }
-                    this.previous.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.previous.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
             this.next = this.accessory.getService('Next') ||
@@ -1115,7 +1175,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('NEXT')]);
                     }
-                    this.next.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.next.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
             this.rewindButton = this.accessory.getService('Rewind') ||
@@ -1131,7 +1193,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('REWIND')]);
                     }
-                    this.rewindButton.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.rewindButton.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
             this.forwardButton = this.accessory.getService('Forward') ||
@@ -1147,7 +1211,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('FORWARD')]);
                     }
-                    this.forwardButton.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.forwardButton.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1166,7 +1232,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('DIMMER')]);
                     }
-                    this.dimmer.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.dimmer.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1184,7 +1252,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('PURE AUDIO')]);
                     }
-                    this.pureAudio.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.pureAudio.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1202,7 +1272,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('RED')]);
                     }
-                    this.red.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.red.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1220,7 +1292,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('GREEN')]);
                     }
-                    this.green.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.green.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1238,7 +1312,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('BLUE')]);
                     }
-                    this.blue.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.blue.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1256,7 +1332,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('YELLOW')]);
                     }
-                    this.yellow.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.yellow.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1274,7 +1352,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('AUDIO')]);
                     }
-                    this.audio.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.audio.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1292,7 +1372,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('SUBTITLE')]);
                     }
-                    this.subtitle.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.subtitle.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1310,7 +1392,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('ANGLE')]);
                     }
-                    this.angle.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.angle.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1328,7 +1412,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('ZOOM')]);
                     }
-                    this.zoom.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.zoom.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1346,7 +1432,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('SAP')]);
                     }
-                    this.sap.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.sap.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1364,7 +1452,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('AB REPLAY')]);
                     }
-                    this.abReplay.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.abReplay.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1382,7 +1472,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('REPEAT')]);
                     }
-                    this.repeat.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.repeat.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1401,7 +1493,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('PIP')]);
                     }
-                    this.pip.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.pip.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1419,7 +1513,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('RESOLUTION')]);
                     }
-                    this.resolution.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.resolution.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1437,7 +1533,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('3D')]);
                     }
-                    this.threeD.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.threeD.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1455,7 +1553,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('PIC')]);
                     }
-                    this.picture.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.picture.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1473,7 +1573,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('HDR')]);
                     }
-                    this.hdrButton.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.hdrButton.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1491,7 +1593,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('SUBTITTLE (HOLD)')]);
                     }
-                    this.subtitleHold.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.subtitleHold.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1509,7 +1613,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('INFO (HOLD)')]);
                     }
-                    this.infoHold.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.infoHold.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1527,7 +1633,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('RESOLUTION (HOLD)')]);
                     }
-                    this.resolutionHold.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.resolutionHold.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1545,7 +1653,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('AV SYNC')]);
                     }
-                    this.avSync.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.avSync.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1563,7 +1673,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('GAPLESS PLAY')]);
                     }
-                    this.gaplessPlay.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.gaplessPlay.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1581,7 +1693,9 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('INPUT')]);
                     }
-                    this.input.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.input.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
@@ -1600,11 +1714,13 @@ class oppoAccessory {
                     if (value === true) {
                         this.sending([this.pressedButton('EJECT')]);
                     }
-                    this.ejectDisc.updateCharacteristic(this.platform.Characteristic.On, false);
+                    setTimeout(() => {
+                        this.ejectDisc.updateCharacteristic(this.platform.Characteristic.On, false);
+                    }, this.statelessTimeOut);
                     callback(null);
                 });
         }
-        ///////////////Clean up. Delete services not in used
+        ///////////////Clean up. Delete services not in used////////////////////////////////
         if (this.config.powerB === false) {
             this.accessory.removeService(this.service);
         }
@@ -1662,8 +1778,8 @@ class oppoAccessory {
         if (this.config.clearB === false) {
             this.accessory.removeService(this.clear);
         }
-        if (this.config.topMenu === false) {
-            this.accessory.removeService(this.topMenu);
+        if (this.config.topMenuB === false) {
+            this.accessory.removeService(this.topMenuB);
         }
         if (this.config.optionB === false) {
             this.accessory.removeService(this.option);
@@ -1787,42 +1903,41 @@ class oppoAccessory {
             }
             this.platform.log.debug('Socket writable: ', this.client.writable);
             this.platform.log.debug('Number of reconnection tries: ' + this.reconnectionCounter);
-            this.tvService.updateCharacteristic(this.platform.Characteristic.Active, this.powerStateTV);
-            this.play.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[0]);
-            this.pause.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[1]);
-            this.stop.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[2]);
+            //this.tvService.updateCharacteristic(this.platform.Characteristic.Active, this.powerStateTV);
+            this.newPowerState(this.powerState);
+            this.newPlayBackState(this.playBackState);
+            this.newInputName(this.inputName);
             if (this.config.mediaAudioVideoState === true) {
-                this.dolbyVision.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[0]);
-                this.hdr10.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[1]);
-                this.SDR.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[2]);
-                this.dolbySound.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.audioType[0]);
-                this.dtsSound.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.audioType[1]);
+                this.newHDRState(this.HDROutput);
+                this.newAudioType(this.audioType);
             }
-            this.connectionStatus.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.connectionLimit);
-            this.connectionStatus.updateCharacteristic(this.platform.Characteristic.StatusFault, this.connectionLimitStatus);
-            this.tvService.updateCharacteristic(this.platform.Characteristic.CurrentMediaState, this.mediaState);
-            this.tvService.updateCharacteristic(this.platform.Characteristic.ActiveIdentifier, this.inputID);
-            this.speakerService.updateCharacteristic(this.platform.Characteristic.Volume, this.currentVolume);
-            this.speakerService.updateCharacteristic(this.platform.Characteristic.Mute, this.currentMuteState);
-            this.bluRay.updateCharacteristic(this.platform.Characteristic.ConfiguredName, this.inputName);
+            if (this.connectionStatus.getCharacteristic(this.platform.Characteristic.MotionDetected).value !== this.connectionLimit) {
+                this.connectionStatus.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.connectionLimit);
+            }
+            if (this.connectionStatus.getCharacteristic(this.platform.Characteristic.StatusFault).value !== this.connectionLimitStatus) {
+                this.connectionStatus.updateCharacteristic(this.platform.Characteristic.StatusFault, this.connectionLimitStatus);
+            }
+            if (this.tvService.getCharacteristic(this.platform.Characteristic.CurrentMediaState).value !== this.mediaState) {
+                this.tvService.updateCharacteristic(this.platform.Characteristic.CurrentMediaState, this.mediaState);
+            }
+            if (this.tvService.getCharacteristic(this.platform.Characteristic.ActiveIdentifier).value !== this.inputID) {
+                this.tvService.updateCharacteristic(this.platform.Characteristic.ActiveIdentifier, this.inputID);
+            }
+            if (this.speakerService.getCharacteristic(this.platform.Characteristic.Volume).value !== this.currentVolume) {
+                this.speakerService.updateCharacteristic(this.platform.Characteristic.Volume, this.currentVolume);
+            }
+            if (this.speakerService.getCharacteristic(this.platform.Characteristic.Mute).value !== this.currentMuteState) {
+                this.speakerService.updateCharacteristic(this.platform.Characteristic.Mute, this.currentMuteState);
+            }
             if (this.config.powerB === true) {
                 this.service.updateCharacteristic(this.platform.Characteristic.On, this.powerState);
             }
             if (this.config.inputButtons === true) {
-                this.bluRayInput.updateCharacteristic(this.platform.Characteristic.On, this.inputState[0]);
-                this.hdmiIn.updateCharacteristic(this.platform.Characteristic.On, this.inputState[1]);
-                this.hdmiOut.updateCharacteristic(this.platform.Characteristic.On, this.inputState[2]);
-                if (this.config.oppo205 === true) {
-                    this.opticalB.updateCharacteristic(this.platform.Characteristic.On, this.inputState[3]);
-                    this.coaxialB.updateCharacteristic(this.platform.Characteristic.On, this.inputState[4]);
-                    this.usbAudioB.updateCharacteristic(this.platform.Characteristic.On, this.inputState[5]);
-                }
+                this.newInputState(this.inputState);
             }
             if (this.config.volume === true) {
-                this.volumeDimmer.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentVolume);
-                this.volumeDimmer.updateCharacteristic(this.platform.Characteristic.On, this.currentVolumeSwitch);
+                this.newVolumeStatus(this.currentVolume);
             }
-
             if (this.config.movieControl === true) {
                 this.movieControlL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentMovieProgress);
                 this.movieControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentMovieProgressState);
@@ -1832,8 +1947,7 @@ class oppoAccessory {
                 this.chapterControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentChapterTimeState);
             }
             if (this.config.chapterSelector === true) {
-                this.chapterSelectorL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentChapterSelector[0]);
-                this.chapterSelectorL.updateCharacteristic(this.platform.Characteristic.On, this.currentChapterSelectorState);
+                this.newChapter(this.currentChapterSelector[0]);
             }
         }, this.config.pollingInterval);
     }
@@ -1941,19 +2055,38 @@ class oppoAccessory {
     setOn(value, callback) {
         let oppoState = value;
         if (oppoState === true) {
+            this.turnOffCommandOn = false;
+            this.turnOnCommandOn = true;
             this.sending([this.pressedButton('POWER ON')]);
+            if (this.turnOnCommandOn === true) {
+                setTimeout(() => {
+                    this.turnOnCommandOn = false;
+                }, 3000);
+            }
         }
         else {
+            this.turnOnCommandOn = false;
+            this.turnOffCommandOn = true;
             if (this.playBackState[0] === true) {
-                this.sending([this.pressedButton('PAUSE')]);
+                this.sending([this.pressedButton('STOP')]);
                 setTimeout(() => {
+                    this.turnOffAll();
                     this.sending([this.pressedButton('POWER OFF')]);
-                }, 200);
-                turnOffAll();
+                }, 500);
+                if (this.turnOffCommandOn === true) {
+                    setTimeout(() => {
+                        this.turnOffCommandOn = false;
+                    }, 3000);
+                }
             }
             else {
+                this.turnOffAll();
                 this.sending([this.pressedButton('POWER OFF')]);
-                turnOffAll();
+                if (this.turnOffCommandOn === true) {
+                    setTimeout(() => {
+                        this.turnOffCommandOn = false;
+                    }, 3000);
+                }
             }
         }
         this.platform.log.debug('Set Power to ->', value);
@@ -2109,7 +2242,9 @@ class oppoAccessory {
                         }
                         this.client.write(press[i]);
                         this.commandLog(press[i]);
-                        this.sendHttp(this.makeUrl('#PON'), '#PON');
+                        setTimeout(() => {
+                            this.sendHttp(this.makeUrl('#PON'), '#PON');
+                        }, 500);
                     }
                 }
             }
@@ -2225,7 +2360,7 @@ class oppoAccessory {
             return url
         }
         else if (key.includes('SIS')) {
-            let url = "http://" + this.OPPO_IP + ":436/sendremotekey?%7B%22key%22%3A%22SRC%22%7D";
+            let url = "http://" + this.OPPO_IP + ":436/sendremotekey?%7B%22SRC%22%3A%22SRC%22%7D";
             this.platform.log(`Sending: Input Change ${this.newResponse}`);
             this.platform.log.debug(url);
             return url
@@ -2259,45 +2394,53 @@ class oppoAccessory {
             this.currentMuteState = false;
             this.currentVolumeSwitch = true;
         }
-        this.speakerService.updateCharacteristic(this.platform.Characteristic.Volume, this.currentVolume);
-        this.speakerService.updateCharacteristic(this.platform.Characteristic.Mute, this.currentMuteState);
-        this.speakerService.getCharacteristic(this.platform.Characteristic.Volume).updateValue(this.currentVolume);
-        this.speakerService.getCharacteristic(this.platform.Characteristic.Mute).updateValue(this.currentMuteState)
-        if (this.config.volume === true) {
-            this.volumeDimmer.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentVolume);
-            this.volumeDimmer.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentVolume);
-            this.volumeDimmer.updateCharacteristic(this.platform.Characteristic.On, this.currentVolumeSwitch);
-            this.volumeDimmer.getCharacteristic(this.platform.Characteristic.On).updateValue(this.currentVolumeSwitch);
+        if (this.speakerService.getCharacteristic(this.platform.Characteristic.Volume).value !== this.currentVolume) {
+            this.speakerService.updateCharacteristic(this.platform.Characteristic.Volume, this.currentVolume);
+            this.speakerService.updateCharacteristic(this.platform.Characteristic.Mute, this.currentMuteState);
+            this.speakerService.getCharacteristic(this.platform.Characteristic.Volume).updateValue(this.currentVolume);
+            this.speakerService.getCharacteristic(this.platform.Characteristic.Mute).updateValue(this.currentMuteState)
+            if (this.config.volume === true) {
+                this.volumeDimmer.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentVolume);
+                this.volumeDimmer.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentVolume);
+                this.volumeDimmer.updateCharacteristic(this.platform.Characteristic.On, this.currentVolumeSwitch);
+                this.volumeDimmer.getCharacteristic(this.platform.Characteristic.On).updateValue(this.currentVolumeSwitch);
+            }
         }
     }
     newInputName(newName) {
         this.inputName = newName;
-        this.platform.log.debug(this.inputName);
-        this.bluRay.updateCharacteristic(this.platform.Characteristic.ConfiguredName, this.inputName)
-        this.bluRay.getCharacteristic(this.platform.Characteristic.ConfiguredName).updateValue(this.inputName);
+        if (this.bluRay.getCharacteristic(this.platform.Characteristic.ConfiguredName).value !== this.inputName) {
+            this.platform.log.debug(this.inputName);
+            this.bluRay.updateCharacteristic(this.platform.Characteristic.ConfiguredName, this.inputName)
+            this.bluRay.getCharacteristic(this.platform.Characteristic.ConfiguredName).updateValue(this.inputName);
+        }
     }
     newChapter(newChapter) {
-        if (newChapter === 0) {
-            this.currentChapterSelectorState = false;
-        }
-        if (newChapter !== 0) {
-            this.currentChapterSelectorState = true;
-            if (newChapter !== this.currentChapterSelector[0]) {
-                this.chapterFirstUpdate = true;
-                setTimeout(() => {
-                    this.sending([this.query('CHAPTER TIME REMAINING')]);
-                }, 200);
-                setTimeout(() => {
-                    this.sending([this.query('CHAPTER TIME ELAPSED')]);
-                }, 400);
+        if (this.currentChapterSelector[0] !== newChapter) {
+            if (newChapter === 0) {
+                this.currentChapterSelectorState = false;
             }
-        }
-        this.currentChapterSelector[0] = newChapter;
-        if (this.config.chapterSelector === true) {
-            this.chapterSelectorL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentChapterSelector[0]);
-            this.chapterSelectorL.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentChapterSelector[0]);
-            this.chapterSelectorL.updateCharacteristic(this.platform.Characteristic.On, this.currentChapterSelectorState);
-            this.chapterSelectorL.getCharacteristic(this.platform.Characteristic.On).updateValue(this.currentChapterSelectorState);
+            if (newChapter !== 0) {
+                this.currentChapterSelectorState = true;
+                if (newChapter !== this.currentChapterSelector[0]) {
+                    this.chapterFirstUpdate = true;
+                    setTimeout(() => {
+                        this.sending([this.query('CHAPTER TIME REMAINING')]);
+                    }, 200);
+                    setTimeout(() => {
+                        this.sending([this.query('CHAPTER TIME ELAPSED')]);
+                    }, 400);
+                }
+            }
+            this.currentChapterSelector[0] = newChapter;
+            if (this.config.chapterSelector === true) {
+                if (this.chapterSelectorL.getCharacteristic(this.platform.Characteristic.Brightness).value !== this.currentChapterSelector[0]) {
+                    this.chapterSelectorL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentChapterSelector[0]);
+                    this.chapterSelectorL.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentChapterSelector[0]);
+                    this.chapterSelectorL.updateCharacteristic(this.platform.Characteristic.On, this.currentChapterSelectorState);
+                    this.chapterSelectorL.getCharacteristic(this.platform.Characteristic.On).updateValue(this.currentChapterSelectorState);
+                }
+            }
         }
     }
     newChapterTime(newTime) {
@@ -2316,10 +2459,12 @@ class oppoAccessory {
         }
         if (this.currentChapterTime > 100) { this.currentChapterTime = 100 }
         if (this.config.chapterControl === true) {
-            this.chapterControlL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentChapterTime);
-            this.chapterControlL.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentChapterTime);
-            this.chapterControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentChapterTimeState);
-            this.chapterControlL.getCharacteristic(this.platform.Characteristic.On).updateValue(this.currentChapterTimeState);
+            if (this.chapterControlL.getCharacteristic(this.platform.Characteristic.Brightness).value !== this.currentChapterTime) {
+                this.chapterControlL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentChapterTime);
+                this.chapterControlL.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentChapterTime);
+                this.chapterControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentChapterTimeState);
+                this.chapterControlL.getCharacteristic(this.platform.Characteristic.On).updateValue(this.currentChapterTimeState);
+            }
         }
     }
     newMovieTime(newMovieTime) {
@@ -2338,13 +2483,21 @@ class oppoAccessory {
         }
         if (this.currentMovieProgress > 100) { this.currentMovieProgress = 100 }
         if (this.config.movieControl === true) {
-            this.movieControlL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentMovieProgress);
-            this.movieControlL.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentMovieProgress);
-            this.movieControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentMovieProgressState);
-            this.movieControlL.getCharacteristic(this.platform.Characteristic.On).updateValue(this.currentMovieProgressState);
+            if (this.movieControlL.getCharacteristic(this.platform.Characteristic.Brightness).value !== this.currentMovieProgress) {
+                this.movieControlL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentMovieProgress);
+                this.movieControlL.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentMovieProgress);
+                this.movieControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentMovieProgressState);
+                this.movieControlL.getCharacteristic(this.platform.Characteristic.On).updateValue(this.currentMovieProgressState);
+            }
         }
     }
     newPowerState(newValue) {
+        if (newValue === true && this.turnOffCommandOn === true) {
+            newValue = false;
+        }
+        if (newValue === false && this.turnOnCommandOn === true) {
+            newValue = true;
+        }
         if (newValue === true) {
             this.powerStateTV = 1;
         }
@@ -2352,11 +2505,13 @@ class oppoAccessory {
             this.powerStateTV = 0;
         }
         this.powerState = newValue;
-        this.tvService.updateCharacteristic(this.platform.Characteristic.Active, this.powerStateTV);
-        this.tvService.getCharacteristic(this.platform.Characteristic.Active).updateValue(this.powerStateTV);
-        if (this.config.powerB === true) {
-            this.service.updateCharacteristic(this.platform.Characteristic.On, this.powerState);
-            this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(this.powerState);
+        if (this.tvService.getCharacteristic(this.platform.Characteristic.Active).value !== this.powerStateTV) {
+            this.tvService.updateCharacteristic(this.platform.Characteristic.Active, this.powerStateTV);
+            this.tvService.getCharacteristic(this.platform.Characteristic.Active).updateValue(this.powerStateTV);
+            if (this.config.powerB === true) {
+                this.service.updateCharacteristic(this.platform.Characteristic.On, this.powerState);
+                this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(this.powerState);
+            }
         }
     }
     newPlayBackState(newPlay) {
@@ -2373,77 +2528,98 @@ class oppoAccessory {
         if (this.playBackState[0] === false && this.playBackState[1] === false && this.playBackState[2] === false) {
             this.mediaState = 4;
         }
-        this.play.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[0]);
-        this.play.getCharacteristic(this.platform.Characteristic.On).updateValue(this.playBackState[0]);
-        this.pause.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[1]);
-        this.pause.getCharacteristic(this.platform.Characteristic.On).updateValue(this.playBackState[1]);
-        this.stop.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[2]);
-        this.stop.getCharacteristic(this.platform.Characteristic.On).updateValue(this.playBackState[2]);
-        this.tvService.updateCharacteristic(this.platform.Characteristic.CurrentMediaState, this.mediaState);
-        this.tvService.getCharacteristic(this.platform.Characteristic.CurrentMediaState).updateValue(this.mediaState);
+        if (this.play.getCharacteristic(this.platform.Characteristic.On).value !== this.playBackState[0]) {
+            this.play.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[0]);
+            this.play.getCharacteristic(this.platform.Characteristic.On).updateValue(this.playBackState[0]);
+        }
+        if (this.pause.getCharacteristic(this.platform.Characteristic.On).value !== this.playBackState[1]) {
+            this.pause.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[1]);
+            this.pause.getCharacteristic(this.platform.Characteristic.On).updateValue(this.playBackState[1]);
+        }
+        if (this.stop.getCharacteristic(this.platform.Characteristic.On).value !== this.playBackState[2]) {
+            this.stop.updateCharacteristic(this.platform.Characteristic.On, this.playBackState[2]);
+            this.stop.getCharacteristic(this.platform.Characteristic.On).updateValue(this.playBackState[2]);
+        }
+        if (this.tvService.getCharacteristic(this.platform.Characteristic.CurrentMediaState).value !== this.mediaState) {
+            this.tvService.updateCharacteristic(this.platform.Characteristic.CurrentMediaState, this.mediaState);
+            this.tvService.getCharacteristic(this.platform.Characteristic.CurrentMediaState).updateValue(this.mediaState);
+        }
+
     }
     newHDRState(newHDR) {
         this.HDROutput = newHDR;
         if (this.config.mediaAudioVideoState === true) {
-            this.dolbyVision.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[0]);
-            this.dolbyVision.getCharacteristic(this.platform.Characteristic.MotionDetected).updateValue(this.HDROutput[0]);
-            this.hdr10.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[1]);
-            this.hdr10.getCharacteristic(this.platform.Characteristic.MotionDetected).updateValue(this.HDROutput[1]);
-            this.SDR.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[2]);
-            this.SDR.getCharacteristic(this.platform.Characteristic.MotionDetected).updateValue(this.HDROutput[2]);
+            if (this.dolbyVision.getCharacteristic(this.platform.Characteristic.MotionDetected).value !== this.HDROutput[0]) {
+                this.dolbyVision.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[0]);
+                this.dolbyVision.getCharacteristic(this.platform.Characteristic.MotionDetected).updateValue(this.HDROutput[0]);
+            }
+            if (this.hdr10.getCharacteristic(this.platform.Characteristic.MotionDetected).value !== this.HDROutput[1]) {
+                this.hdr10.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[1]);
+                this.hdr10.getCharacteristic(this.platform.Characteristic.MotionDetected).updateValue(this.HDROutput[1]);
+            }
+            if (this.SDR.getCharacteristic(this.platform.Characteristic.MotionDetected).value !== this.HDROutput[2]) {
+                this.SDR.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.HDROutput[2]);
+                this.SDR.getCharacteristic(this.platform.Characteristic.MotionDetected).updateValue(this.HDROutput[2]);
+            }
         }
     }
     newAudioType(newAT) {
         this.audioType = newAT;
         if (this.config.mediaAudioVideoState === true) {
-            this.dolbySound.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.audioType[0]);
-            this.dolbySound.getCharacteristic(this.platform.Characteristic.MotionDetected).updateValue(this.audioType[0]);
-            this.dtsSound.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.audioType[1]);
-            this.dtsSound.getCharacteristic(this.platform.Characteristic.MotionDetected).updateValue(this.audioType[1]);
+            if (this.dolbySound.getCharacteristic(this.platform.Characteristic.MotionDetected).value !== this.audioType[0]) {
+                this.dolbySound.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.audioType[0]);
+                this.dolbySound.getCharacteristic(this.platform.Characteristic.MotionDetected).updateValue(this.audioType[0]);
+            }
+            if (this.dtsSound.getCharacteristic(this.platform.Characteristic.MotionDetected).value !== this.audioType[1]) {
+                this.dtsSound.updateCharacteristic(this.platform.Characteristic.MotionDetected, this.audioType[1]);
+                this.dtsSound.getCharacteristic(this.platform.Characteristic.MotionDetected).updateValue(this.audioType[1]);
+            }
         }
     }
     newInputState(newInput) {
-        this.inputState = newInput;
-        if (this.inputState[0] === true) {
-            this.inputID = 1;
-        }
-        else if (this.inputState[1] === true) {
-            this.inputID = 2;
-        }
-        else if (this.inputState[2] === true) {
-            this.inputID = 3;
-        }
-        else if (this.inputState[3] === true) {
-            this.inputID = 4;
-        }
-        else if (this.inputState[4] === true) {
-            this.inputID = 5;
-        }
-        else if (this.inputState[5] === true) {
-            this.inputID = 6;
-        }
-        else if (this.inputState[0] === false && this.inputState[1] === false && this.inputState[2] === false
-            && this.inputState[3] === false && this.inputState[4] === false && this.inputState[5] === false) {
-            this.inputID = 0;
-        }
-        else {
-        }
-        this.tvService.updateCharacteristic(this.platform.Characteristic.ActiveIdentifier, this.inputID);
-        this.tvService.getCharacteristic(this.platform.Characteristic.ActiveIdentifier).updateValue(this.inputID);
-        if (this.config.inputButtons === true) {
-            this.bluRayInput.updateCharacteristic(this.platform.Characteristic.On, this.inputState[0]);
-            this.bluRayInput.getCharacteristic(this.platform.Characteristic.On).updateValue(this.inputState[0]);
-            this.hdmiIn.updateCharacteristic(this.platform.Characteristic.On, this.inputState[1]);
-            this.hdmiIn.getCharacteristic(this.platform.Characteristic.On).updateValue(this.inputState[1]);
-            this.hdmiOut.updateCharacteristic(this.platform.Characteristic.On, this.inputState[2]);
-            this.hdmiOut.getCharacteristic(this.platform.Characteristic.On).updateValue(this.inputState[2]);
-            if (this.config.oppo205 === true) {
-                this.opticalB.updateCharacteristic(this.platform.Characteristic.On, this.inputState[3]);
-                this.opticalB.getCharacteristic(this.platform.Characteristic.On).updateValue(this.inputState[3]);
-                this.coaxialB.updateCharacteristic(this.platform.Characteristic.On, this.inputState[4]);
-                this.coaxialB.getCharacteristic(this.platform.Characteristic.On).updateValue(this.inputState[4]);
-                this.usbAudioB.updateCharacteristic(this.platform.Characteristic.On, this.inputState[5]);
-                this.usbAudioB.getCharacteristic(this.platform.Characteristic.On).updateValue(this.inputState[5]);
+        if (this.inputState !== newInput) {
+            this.inputState = newInput;
+            if (this.inputState[0] === true) {
+                this.inputID = 1;
+            }
+            else if (this.inputState[1] === true) {
+                this.inputID = 2;
+            }
+            else if (this.inputState[2] === true) {
+                this.inputID = 3;
+            }
+            else if (this.inputState[3] === true) {
+                this.inputID = 4;
+            }
+            else if (this.inputState[4] === true) {
+                this.inputID = 5;
+            }
+            else if (this.inputState[5] === true) {
+                this.inputID = 6;
+            }
+            else if (this.inputState[0] === false && this.inputState[1] === false && this.inputState[2] === false
+                && this.inputState[3] === false && this.inputState[4] === false && this.inputState[5] === false) {
+                this.inputID = 0;
+            }
+            else {
+            }
+            this.tvService.updateCharacteristic(this.platform.Characteristic.ActiveIdentifier, this.inputID);
+            this.tvService.getCharacteristic(this.platform.Characteristic.ActiveIdentifier).updateValue(this.inputID);
+            if (this.config.inputButtons === true) {
+                this.bluRayInput.updateCharacteristic(this.platform.Characteristic.On, this.inputState[0]);
+                this.bluRayInput.getCharacteristic(this.platform.Characteristic.On).updateValue(this.inputState[0]);
+                this.hdmiIn.updateCharacteristic(this.platform.Characteristic.On, this.inputState[1]);
+                this.hdmiIn.getCharacteristic(this.platform.Characteristic.On).updateValue(this.inputState[1]);
+                this.hdmiOut.updateCharacteristic(this.platform.Characteristic.On, this.inputState[2]);
+                this.hdmiOut.getCharacteristic(this.platform.Characteristic.On).updateValue(this.inputState[2]);
+                if (this.config.oppo205 === true) {
+                    this.opticalB.updateCharacteristic(this.platform.Characteristic.On, this.inputState[3]);
+                    this.opticalB.getCharacteristic(this.platform.Characteristic.On).updateValue(this.inputState[3]);
+                    this.coaxialB.updateCharacteristic(this.platform.Characteristic.On, this.inputState[4]);
+                    this.coaxialB.getCharacteristic(this.platform.Characteristic.On).updateValue(this.inputState[4]);
+                    this.usbAudioB.updateCharacteristic(this.platform.Characteristic.On, this.inputState[5]);
+                    this.usbAudioB.getCharacteristic(this.platform.Characteristic.On).updateValue(this.inputState[5]);
+                }
             }
         }
     }
@@ -2471,8 +2647,8 @@ class oppoAccessory {
                         else {
                             nameInput = Object.values(newNameInput)[Object.keys(newNameInput).length - 1];
                         }
-                            this.platform.log(`Response: ${nameInput} is Playing`);
-                            this.newInputName(nameInput);
+                        this.platform.log(`Response: ${nameInput} is Playing`);
+                        this.newInputName(nameInput);
                     }
                 }
                 if (typeof (rawData.playinfo.file_name) !== 'undefined') {
@@ -2610,7 +2786,7 @@ class oppoAccessory {
             else if (res[i].includes('QVM OK 3')) {
                 this.resetCouter();
                 this.platform.log.debug(`Response: Verbose Mode 3`);
-                if (this.config.movieControl === true || this.config.chapterControl === true ||this.config.chapterSelector === true) {
+                if (this.config.movieControl === true || this.config.chapterControl === true || this.config.chapterSelector === true) {
                     setTimeout(() => {
                         this.sending([this.query('POWER STATUS')]);
                     }, 200);
@@ -2622,7 +2798,7 @@ class oppoAccessory {
             else if (res[i].includes('SVM OK 3')) {
                 this.resetCouter();
                 this.platform.log.debug(`Response: Verbose Mode 3 Executed`);
-                if (this.config.movieControl === true || this.config.chapterControl === true ||this.config.chapterSelector === true) {
+                if (this.config.movieControl === true || this.config.chapterControl === true || this.config.chapterSelector === true) {
                     setTimeout(() => {
                         this.sending([this.query('POWER STATUS')]);
                     }, 200);
@@ -3750,11 +3926,6 @@ class oppoAccessory {
         if (this.config.movieControl === true) {
             this.currentMovieProgressFirst = true;
             this.newMovieTime(0);
-            //this.currentMovieProgressFirst = true;
-            //this.chapterFirstUpdate = true;
-            //this.newChapter(0);
-            //this.newMovieTime(0);
-            //this.newChapterTime(0);
         }
         if (this.config.chapterControl === true) {
             this.chapterFirstUpdate = true;
