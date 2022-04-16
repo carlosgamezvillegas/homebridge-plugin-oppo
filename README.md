@@ -179,12 +179,15 @@ This will enable additional extra log which might be helpful to debug all kind o
 Note: Controls won't update if the plugin does not receive a confirmation message from the device
 
 ## Known Issues
- The Oppo player tends to disconnect from homebridge frequently after a while for no apparent reason. So, to get a stable connection again you need to do the following:
+ The Oppo player tends to disconnect from Hemebridge frequently after a while for no apparent reason. So, to get a stable connection again you need to do the following:
  - Disable IP Controls and Network Standby
  - Power cycle the device
  - Enable IP Controls and Network Standby
  - Keep the device turned on
  - Reset Homebridge 
+ 
+Http Commands won't work until you connect to the device Usuing the Oppo official app "Media control". The iOS and Android App can be used to fix this. 
+
 
 ## Special thanks
 To Fernando for his patience and support.
@@ -192,3 +195,4 @@ To Fernando for his patience and support.
 If you have any suggestions/improvements please let know.
 
 Enjoy!!
+
