@@ -1,4 +1,11 @@
 # Changelog
+## [3.2.3] - 2022-04-16
+- Bug fixes
+## [3.2.2] - 2022-03-08
+- Statetless switch (button) goes to off state faster
+- Fixed a typo that prevented one button to be created
+## [3.2.1] - 2022-02-22
+- Fixed typo that prevented the plugin from loading
 ## [3.2.0] - 2022-01-06
 - Bug fixes
 ### Changed
