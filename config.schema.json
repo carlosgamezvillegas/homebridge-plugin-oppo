@@ -2,7 +2,7 @@
   "pluginAlias": "oppoPlugin",
   "pluginType": "platform",
   "singular": true,
-  "headerDisplay": "This plugin is provided by [carlosgamezvillegas](https://github.com/carlosgamezvillegas/)",
+  "headerDisplay": "This plugin is provided by [carlosgamezvillegas](https://github.com/carlosgamezvillegas/)he device must be [added manually](https://github.com/carlosgamezvillegas/homebridge-plugin-oppo#adding-the-oppo-to-the-home-app) in the Home app.",
   "schema": {
     "type": "object",
     "properties": {
@@ -16,12 +16,16 @@
         "title": "IP Address",
         "type": "string",
         "placeholders": "192.168.1.1",
+        "format": "ipv4",
         "required": true
       },
       "pollingInterval": {
         "title": "Polling Interval (milliseconds)",
-        "type": "number",
-        "placeholders": "1000",
+        "type": "integer",
+        "placeholders": "5000",
+        "default": 5000,
+        "minimum": 5000,
+        "maximum": 60000,
         "required": false
       },
       "modelName": {
@@ -306,6 +310,12 @@
         "title": "Add the Eject/Close button",
         "type": "boolean",
         "required": false
+      },
+      "autoIP": {
+        "title": "Set the IP ddress manually. Use this option if the device cannot be found automatically",
+        "type": "boolean",
+        "required": false,
+        "default": false
       }
     }
   },
@@ -319,13 +329,6 @@
           "flex-flow": "column",
           "items": [
             "name"
-          ]
-        },
-        {
-          "type": "flex",
-          "flex-flow": "column",
-          "items": [
-            "ip"
           ]
         },
         {
@@ -354,6 +357,17 @@
           "flex-flow": "column",
           "items": [
             "serialN"
+          ]
+        },
+        {
+          "key": "autoIP"
+        },
+        {
+          "type": "flex",
+          "flex-flow": "column",
+          "condition": "model.autoIP",
+          "items": [
+            "ip"
           ]
         }
       ]
