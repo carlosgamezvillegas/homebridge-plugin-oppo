@@ -52,10 +52,11 @@ Example configuration:
     {
             "name": "Oppo 203",
             "ip": "Youre IP Address", 
-            "pollingInterval": 1000,
+            "pollingInterval": 5000,
             "modelName": "UDP-203",
             "manufacture": "Oppo Digital Inc",
             "serialN": "B210U71647033894",
+            "autoIP": false,
             "volume": false,
             "mediaButtons": false,
             "inputButtons":false,
@@ -69,9 +70,6 @@ Example configuration:
 }
 ```
 
-Make sure you change the IP Address the one the devices is currently using.
-
-
 ### Adding the Oppo to the Home app
 Since HomeKit expects only one Oppo per bridge they will be declared as external accessories and acts as a bridge.  
 This means that a device will not appear in your Home app until you add it!
@@ -80,7 +78,7 @@ To add the Oppo to HomeKit follow this steps:
 
 1. Open the Home <img src="https://user-images.githubusercontent.com/3979615/78010622-4ea1d380-738e-11ea-8a17-e6a465eeec35.png" height="16.42px"> app on your device.
 2. Tap the Home tab, then tap <img src="https://user-images.githubusercontent.com/3979615/78010869-9aed1380-738e-11ea-9644-9f46b3633026.png" height="16.42px">.
-3. Tap *Add Accessory*, and select *I Don't Have a Code or Cannot Scan*.
+3. Tap *Add Accessory*, and select *I Don't Have a Code or Cannot Scan* or *More Options...* whichever is available.
 4. Select the accessory you want to pair.
 5. Enter the Homebridge PIN, this can be found under the QR code in Homebridge UI or your Homebridge logs, alternatively you can select *Use Camera* and scan the QR code again.
 
@@ -103,6 +101,8 @@ Model name of your device
 The manufcturer of your device
 - `serialN` [optional]
 Serial Number of your device
+- `autoIP` [optional]
+Set the IP address manually. Use this option if the device cannot be found automatically. **Default: false**
 - `volume` [optional]
 Enables volume control to the device as a lightbulg. **Default: false**
 - `mediaButtons` [optional]
@@ -185,8 +185,6 @@ Note: Controls won't update if the plugin does not receive a confirmation messag
  - Enable IP Controls and Network Standby
  - Keep the device turned on
  - Reset Homebridge 
- 
-Http Commands won't work until you connect to the device Usuing the Oppo official app "Media control". The iOS and Android App can be used to fix this. 
 
 
 ## Special thanks
@@ -195,4 +193,3 @@ To Fernando for his patience and support.
 If you have any suggestions/improvements please let know.
 
 Enjoy!!
-
