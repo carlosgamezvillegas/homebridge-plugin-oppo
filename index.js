@@ -5,6 +5,7 @@ const net = require("net");
 const request = require('http')
 const OPPO_PORT = 23;
 const timeout = 2000;
+const udp = require('dgram');
 
 
 module.exports = (api) => {
@@ -67,6 +68,7 @@ class oppoAccessory {
         this.accessory = accessory;
         this.config = platform.config;
         this.OPPO_IP = this.config.ip;
+        this.IPReceived = false;
         this.localIP = '192.168.0.2'
         this.statelessTimeOut = 1000;
         //////Initial Switch and sensors state///////////////////////////////////////////////////////////////////////////////////////////////
@@ -82,6 +84,8 @@ class oppoAccessory {
         this.currentVolumeSwitch = false;
         this.inputID = 1;
         this.mediaState = 4;
+        this.loginTimeOut = true;
+        this.netConnectTimeOut = true;
         this.turnOffAllUsed = false;
         this.videoState = false;
         this.audioState = false;
@@ -125,6 +129,7 @@ class oppoAccessory {
         this.config.pollingInterval = platform.config.pollingInterval || 1000;
         this.config.modelName = platform.config.modelName || 'UDP-203';
         this.config.serialN = platform.config.serialN || 'B210U71647033894';
+        this.config.autoIP = platform.config.autoIP || false;
         this.config.inputButtons = platform.config.inputButtons || false;
         this.config.oppo205 = platform.config.oppo205 || false;
         this.config.volume = platform.config.volume || false;
@@ -177,10 +182,17 @@ class oppoAccessory {
         this.config.chinoppo = platform.config.chinoppo || false;
         this.config.powerB = platform.config.powerB || false;
         this.config.mediaAudioVideoState = platform.config.mediaAudioVideoState || false;
-
+        if (this.config.autoIP === true) {
+            //this.platform.log('set to false');
+            this.config.autoIP = false;
+        }
+        else {
+            // this.platform.log('set to true');
+            this.config.autoIP = true;
+        }
         ////Checking if the necessary information was given by the user////////////////////////////////////////////////////
         try {
-            if (!this.config.ip) {
+            if (!this.config.ip && this.config.autoIP === false) {
                 throw new Error(`Oppo IP address is required for ${this.config.name}`);
             }
         } catch (error) {
@@ -218,7 +230,7 @@ class oppoAccessory {
                 else {
                     this.turnOnCommandOn = false;
                     this.turnOffCommandOn = true;
-                    if (this.playBackState[0] === true) {
+                    if (this.playBackState[0] === true || this.playBackState[1] === true) {
                         this.sending([this.pressedButton('STOP')]);
                         setTimeout(() => {
                             this.turnOffAll();
@@ -1720,7 +1732,7 @@ class oppoAccessory {
                     callback(null);
                 });
         }
-        ///////////////Clean up. Delete services not in used////////////////////////////////
+        ///////////////Clean up. Delete services not in used
         if (this.config.powerB === false) {
             this.accessory.removeService(this.service);
         }
@@ -1887,7 +1899,16 @@ class oppoAccessory {
             this.accessory.removeService(this.ejectDisc);
         }
         //////////////////Connecting to Oppo
-        this.netConnect();
+        this.udpServer();
+        if (this.config.autoIP === true) {
+            this.discoveryUDP();
+        }
+        else {
+            this.login();
+            setTimeout(() => {
+                this.netConnect();
+            }, 1000);
+        }
         //syncing////////////////////////////////////////////////////////////////////////////////////////
         setInterval(() => {
             if (this.reconnectionCounter >= this.reconnectionTry && this.reconnectionCounter <= this.reconnectionTry + 30) {
@@ -1896,13 +1917,15 @@ class oppoAccessory {
                 this.connectionLimitStatus = 1;
                 this.commandChain = false;
             }
-            if (this.client.readyState === 'Closed') {
-                this.client.end();
-                delete this.client
-                this.netConnect()
+            if (this.config.autoIP === false || this.IPReceived === true) {
+                if (this.client.readyState === 'Closed') {
+                    this.client.end();
+                    delete this.client
+                    this.netConnect()
+                }
+                this.platform.log.debug('Socket writable: ', this.client.writable);
+                this.platform.log.debug('Number of reconnection tries: ' + this.reconnectionCounter);
             }
-            this.platform.log.debug('Socket writable: ', this.client.writable);
-            this.platform.log.debug('Number of reconnection tries: ' + this.reconnectionCounter);
             //this.tvService.updateCharacteristic(this.platform.Characteristic.Active, this.powerStateTV);
             this.newPowerState(this.powerState);
             this.newPlayBackState(this.playBackState);
@@ -1952,104 +1975,186 @@ class oppoAccessory {
         }, this.config.pollingInterval);
     }
     //////////////Create Client//////////////////////////////////////////////////////////////////////////
+    netConnectTO() {
+        this.netConnectTimeOut = false;
+        setTimeout(() => {
+            this.netConnectTimeOut = true;
+        }, 1000);
+    }
     netConnect() {
-        ////Creating the connection
-        this.client = new net.Socket();
-        this.client.setKeepAlive(true, 0);
-        //////Connect to client
-        this.client.connect(OPPO_PORT, this.OPPO_IP, () => {
-            this.platform.log.debug(`Connecting to ${this.config.name}`);
-            clearTimeout(timer);
-            //this.platform.log(`Sending: ${this.commandName(this.key)}`);
-            // this.client.write(this.key);
-            this.firstConnection = true;
+        if (this.netConnectTimeOut = true) {
+            this.netConnectTO();
+            ////Creating the connection
+            this.client = new net.Socket();
+            this.client.setKeepAlive(true, 0);
+            //////Connect to client
+            this.client.connect(OPPO_PORT, this.OPPO_IP, () => {
+                this.platform.log.debug(`Connecting to ${this.config.name}`);
+                clearTimeout(timer);
+                //this.platform.log(`Sending: ${this.commandName(this.key)}`);
+                // this.client.write(this.key);
+                this.firstConnection = true;
+            });
+            this.client.on('ready', () => {
+                clearTimeout(timer);
+                this.platform.log.debug(`${this.config.name} is ready`);
+                this.platform.log.debug(`Sending: ${this.commandName(this.key)}`);
+                this.sending([this.key]);
+                // this.client.write(this.key);
+                //this.resetCounter()
+                this.firstConnection = true;
+            });
+            /////Receiving Data
+            this.client.on('data', (data) => {
+                clearTimeout(timer);
+                this.eventDecoder(data);
+            });
+            /////Errors
+            this.client.on('error', (e) => {
+                clearTimeout(timer);
+                this.platform.log.debug(`Error: ${e}`);
+                this.platform.log.debug(`Trying to reconnect to ${this.config.name} after an error`);
+                this.platform.log.debug(`Turn on ${this.config.name} and check the IP Address`);
+                this.client.end();
+                this.client.removeAllListeners();
+                this.client.destroy();
+                this.reconnectionCounter += 1;
+                this.firstConnection = true;
+                this.platform.log.debug("Reconnection counter is " + this.reconnectionCounter);
+                // if (this.reconnectionCounter < this.reconnectionTry) {
+                setTimeout(() => {
+                    delete this.client
+                    this.netConnect();
+                }, this.reconnectionWait);
+                if (this.reconnectionCounter > this.reconnectionTry) {
+                    this.connectionLimit = true;
+                    this.connectionLimitStatus = 1;
+                    if (this.turnOffAllUsed === false) {
+                        this.turnOffAll();
+                        this.turnOffAllUsed = true;
+                    }
+                }
+            });
+            ////Connection Closed
+            this.client.on('close', () => {
+                this.platform.log.debug(`Disconnected from ${this.config.name}`);
+                this.reconnectionCounter += 1;
+                this.firstConnection = true;
+                this.currentMovieProgressFirst = true;
+                this.chapterFirstUpdate = true;
+                this.client.end();
+                this.client.removeAllListeners();
+                this.client.destroy();
+                setTimeout(() => {
+                    delete this.client
+                    this.netConnect();
+                }, this.reconnectionWait);
+                if (this.reconnectionCounter > this.reconnectionTry) {
+                    if (this.turnOffAllUsed === false) {
+                        this.turnOffAll();
+                        this.turnOffAllUsed = true;
+                    }
+                }
+            });
+            this.client.on('end', () => {
+                this.platform.log.debug(`Connection to ${this.config.name} ended`);
+                this.reconnectionCounter += 1;
+                this.firstConnection = true;
+                this.currentMovieProgressFirst = true;
+                this.chapterFirstUpdate = true;
+                this.client.end();
+                this.client.removeAllListeners();
+                this.client.destroy();
+                setTimeout(() => {
+                    delete this.client
+                    this.netConnect();
+                }, this.reconnectionWait);
+                if (this.reconnectionCounter > this.reconnectionTry) {
+                    if (this.turnOffAllUsed === false) {
+                        this.turnOffAll();
+                        this.turnOffAllUsed = true;
+                    }
+                }
+            });
+            /////Time out Timer
+            const timer = setTimeout(() => {
+                this.platform.log.debug('ERROR. Attempt at connection exceeded timeout value');
+                // client.destroy();
+            }, timeout);
+        }
+    }
+
+    discoveryUDP() {
+        this.discovery = udp.createSocket({ type: 'udp4', reuseAddr: true });
+        this.discovery.on('error', (error) => {
+            this.platform.log(error);
+            this.discovery.close();
         });
-        this.client.on('ready', () => {
-            clearTimeout(timer);
-            this.platform.log.debug(`${this.config.name} is ready`);
-            this.platform.log.debug(`Sending: ${this.commandName(this.key)}`);
-            this.sending([this.key]);
-            // this.client.write(this.key);
-            //this.resetCouter()
-            this.firstConnection = true;
+        this.discovery.on('listening', () => {
+            var address = this.discovery.address();
+            this.platform.log('UDP Client listening on ' + address.address + ":" + address.port);
+            this.discovery.setBroadcast(true)
+            this.discovery.setMulticastTTL(128);
+            this.discovery.addMembership('239.255.255.251');
         });
-        /////Receiving Data
-        this.client.on('data', (data) => {
-            clearTimeout(timer);
-            this.eventDecoder(data);
-        });
-        /////Errors
-        this.client.on('error', (e) => {
-            clearTimeout(timer);
-            this.platform.log.debug(`Error: ${e}`);
-            this.platform.log.debug(`Trying to reconnect to ${this.config.name} after an error`);
-            this.platform.log.debug(`Turn on ${this.config.name} and check the IP Address`);
-            this.client.end();
-            this.client.removeAllListeners();
-            this.client.destroy();
-            this.reconnectionCounter += 1;
-            this.firstConnection = true;
-            this.platform.log.debug("Reconnection counter is " + this.reconnectionCounter);
-            // if (this.reconnectionCounter < this.reconnectionTry) {
-            setTimeout(() => {
-                delete this.client
-                this.netConnect();
-            }, this.reconnectionWait);
-            if (this.reconnectionCounter > this.reconnectionTry) {
-                this.connectionLimit = true;
-                this.connectionLimitStatus = 1;
-                if (this.turnOffAllUsed === false) {
-                    this.turnOffAll();
-                    this.turnOffAllUsed = true;
+
+        this.discovery.on('message', (message, remote) => {
+            this.platform.log.debug('Message received From: ' + remote.address + ':' + remote.port);
+            let newMessage = String.fromCharCode(...message);
+            this.platform.log.debug(newMessage);
+            var properties = newMessage.split('\n');
+            var oppoInfo = {};
+            properties.forEach((property) => {
+                var tup = property.split(':');
+                oppoInfo[tup[0]] = tup[1];
+            });
+            if (typeof oppoInfo['Server IP'] !== 'undefined') {
+                if (this.OPPO_IP !== oppoInfo['Server IP'].replace(/\s+/g, '')) {
+                    this.OPPO_IP = oppoInfo['Server IP'].replace(/\s+/g, '');
+                    this.platform.log.debug('Oppo IP is: ' + this.OPPO_IP);
+                    this.IPReceived = true;
+                    //this.discovery.close();
+                    setTimeout(() => {
+                        this.login();
+                    }, 500);
+                    setTimeout(() => {
+                        this.netConnect();
+                    }, 1000);
                 }
             }
         });
-        ////Connection Closed
-        this.client.on('close', () => {
-            this.platform.log.debug(`Disconnected from ${this.config.name}`);
-            this.reconnectionCounter += 1;
-            this.firstConnection = true;
-            this.currentMovieProgressFirst = true;
-            this.chapterFirstUpdate = true;
-            this.client.end();
-            this.client.removeAllListeners();
-            this.client.destroy();
-            setTimeout(() => {
-                delete this.client
-                this.netConnect();
-            }, this.reconnectionWait);
-            if (this.reconnectionCounter > this.reconnectionTry) {
-                if (this.turnOffAllUsed === false) {
-                    this.turnOffAll();
-                    this.turnOffAllUsed = true;
-                }
+        this.discovery.bind(7624);
+    }
+    loginTO() {
+        this.loginTimeOut = false;;
+        setTimeout(() => {
+            this.loginTimeOut = true;
+        }, 2000);
+    }
+    login() {
+        if (this.loginTimeOut === true) {
+            let regexExp = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/gi;
+            // this.platform.log(this.OPPO_IP);
+            //this.platform.log(regexExp.test(this.OPPO_IP));
+            if (regexExp.test(this.OPPO_IP)) {
+                this.platform.log('Login to Oppo');
+                this.loginClient = udp.createSocket('udp4');
+                //buffer msg
+                var login = new Buffer.from('NOTIFY OREMOTE LOGIN');
+                //sending msg
+                this.loginTO();
+                this.loginClient.send(login, 7624, this.OPPO_IP, (err) => {
+
+                    //this.platform.log.debug('UDP message sent to ' + this.OPPO_IP + ':' + '7624');
+                    this.platform.log.debug('UDP message sent to devices')
+                    this.platform.log.debug('Error:' + err);
+                    this.loginClient.close();
+                });
             }
-        });
-        this.client.on('end', () => {
-            this.platform.log.debug(`Connection to ${this.config.name} ended`);
-            this.reconnectionCounter += 1;
-            this.firstConnection = true;
-            this.currentMovieProgressFirst = true;
-            this.chapterFirstUpdate = true;
-            this.client.end();
-            this.client.removeAllListeners();
-            this.client.destroy();
-            setTimeout(() => {
-                delete this.client
-                this.netConnect();
-            }, this.reconnectionWait);
-            if (this.reconnectionCounter > this.reconnectionTry) {
-                if (this.turnOffAllUsed === false) {
-                    this.turnOffAll();
-                    this.turnOffAllUsed = true;
-                }
+            else {
+                this.platform.log.debug("IP not set yet or is invalid");
             }
-        });
-        /////Time out Timer
-        const timer = setTimeout(() => {
-            this.platform.log.debug('ERROR. Attempt at connection exceeded timeout value');
-            // client.destroy();
-        }, timeout);
+        }
     }
     ///////Handlers////////////////////////////////////////////////////////////////////////////////////////
     setOn(value, callback) {
@@ -2067,7 +2172,7 @@ class oppoAccessory {
         else {
             this.turnOnCommandOn = false;
             this.turnOffCommandOn = true;
-            if (this.playBackState[0] === true) {
+            if (this.playBackState[0] === true || this.playBackState[1] === true) {
                 this.sending([this.pressedButton('STOP')]);
                 setTimeout(() => {
                     this.turnOffAll();
@@ -2167,25 +2272,28 @@ class oppoAccessory {
             this.platform.log(`Sending: Volume Change to ${commandPress} ${this.newResponse}`);
         }
         else if (commandPress.includes("QPW")) {
-            this.newResponse = `by HTTP (${this.httpNotResponding})`;
+            this.newResponse = `by HTTP`;
             this.platform.log.debug(`Sending: ${this.commandName(commandPress)} ${this.newResponse}`);
             setTimeout(() => {
                 this.sendHttp(this.makeUrl(commandPress), (commandPress));
             }, 500);
         }
         else if (commandPress.includes("PON")) {
-            this.newResponse = `by TCP and HTTP (${this.httpNotResponding})`;
+            //this.newResponse = `by TCP and HTTP`;
             this.platform.log(`Sending: ${this.commandName(commandPress)} ${this.newResponse}`);
-            setTimeout(() => {
-                this.sendHttp(this.makeUrl(commandPress), (commandPress));
-            }, 500);
+            /*
+        setTimeout(() => {
+            this.sendHttp(this.makeUrl(commandPress), (commandPress));
+        }, 1000);
+           */
         }
         else if (this.config.chinoppo === true && commandPress.includes('EJT')) {
-            this.newResponse = `by TCP and HTTP (${this.httpNotResponding})`;
+            // this.newResponse = `by TCP and HTTP`;
             this.platform.log(`Sending: Power on Command ${this.newResponse}`);
-            setTimeout(() => {
-                this.sendHttp(this.makeUrl('#PON'), '#PON');
-            }, 500);
+            /* setTimeout(() => {
+                    this.sendHttp(this.makeUrl('#PON'), '#PON');
+                }, 1000);
+                */
         }
         else {
             this.platform.log(`Sending: ${this.commandName(commandPress)} ${this.newResponse}`);
@@ -2194,81 +2302,110 @@ class oppoAccessory {
 
     /////Sending Instructions/////////////////////////////////////////////////////////////////////////////////////////////////////
     sending(press) {
-        this.platform.log.debug(`Connection counter is ${this.reconnectionCounter} `);
-        this.platform.log.debug(`${press}`);
-        let i = 0;
-        while (i < press.length) {
-            let command = press[i].substring(1);
-
-
-            if (this.reconnectionCounter < this.reconnectionTry) {
-
-
-                //////////////Send By TCP + HTTP
-                if (command.includes('RST') || command.includes('PON') || command.includes('SVM')
-                    || command.includes('SIS') || command.includes('SVL') || command.includes('SRH')
-                    || command.includes('QAT') || command.includes('QVM') || command.includes('QPW')
-                    || command.includes('QHD') || command.includes('QPL') || command.includes('QIS')
-                    || command.includes('QVL') || command.includes('QCH') || command.includes('QCR')
-                    || command.includes('QCE') || command.includes('QEL') || command.includes('QRE')
-                    || command.includes('QVR') || command.includes('EJT')) {
-                    this.reconnectionCounter += 1;
-                    if (this.client.readyState === 'Closed') {
-                        this.client.end();
-                        this.key = press[i];
-                        delete this.client;
-                        this.netConnect();
-                        this.keyReset();
-                        this.commandLog(press[i]);
-                    }
-                    else {
-                        this.newResponse = `by TCP (${this.reconnectionCounter})`;
-                        this.platform.log.debug(`${press[i]} sent by TCP`);
-                        this.client.write(press[i]);
-                        this.commandLog(press[i]);
-                    }
-                }
-                else {
-                    if (this.httpNotResponding <= 3) {
-                        this.newResponse = `by HTTP (${this.httpNotResponding})`;
-                        this.commandLog(press[i]);
-                        this.sendHttp(this.makeUrl(press[i]), press[i]);
-                    }
-                    else {
-                        this.newResponse = `by TCP, HTTP not responding(${this.reconnectionCounter})`;
-                        this.platform.log.debug(`${press[i]} sent by TCP`);
-                        if (press[i].includes('MTR')) {
-                            press[i] = '#QRE';
+        if (this.config.autoIP === false || this.IPReceived === true) {
+            let regexExp = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/gi;
+            //this.platform.log(regexExp.test(this.OPPO_IP));
+            if (regexExp.test(this.OPPO_IP)) {
+                this.platform.log.debug(`Connection counter is ${this.reconnectionCounter} `);
+                this.platform.log.debug(`${press}`);
+                let i = 0;
+                while (i < press.length) {
+                    let command = press[i].substring(1);
+                    if (this.reconnectionCounter < this.reconnectionTry) {
+                        //////////////Send By TCP + HTTP
+                        if (command.includes('RST') || command.includes('PON') || command.includes('SVM')
+                            || command.includes('SIS') || command.includes('SVL') || command.includes('SRH')
+                            || command.includes('QAT') || command.includes('QVM') || command.includes('QPW')
+                            || command.includes('QHD') || command.includes('QPL') || command.includes('QIS')
+                            || command.includes('QVL') || command.includes('QCH') || command.includes('QCR')
+                            || command.includes('QCE') || command.includes('QEL') || command.includes('QRE')
+                            || command.includes('QVR') || command.includes('EJT')) {
+                            this.reconnectionCounter += 1;
+                            if (this.client.readyState === 'Closed') {
+                                this.client.end();
+                                this.key = press[i];
+                                delete this.client;
+                                this.netConnect();
+                                this.keyReset();
+                                this.commandLog(press[i]);
+                            }
+                            else {
+                                this.newResponse = `by TCP`;
+                                //this.newResponse = `by TCP, try number: ${this.reconnectionCounter}`;
+                                this.platform.log.debug(`${press[i]} sent by TCP`);
+                                this.client.write(press[i]);
+                                this.commandLog(press[i]);
+                            }
                         }
-                        this.client.write(press[i]);
-                        this.commandLog(press[i]);
-                        setTimeout(() => {
-                            this.sendHttp(this.makeUrl('#PON'), '#PON');
-                        }, 500);
+                        else {
+                            if (this.httpNotResponding <= 3) {
+                                //this.newResponse = `by HTTP, try number: (${this.httpNotResponding})`;
+                                this.newResponse = `by HTTP`;
+                                this.commandLog(press[i]);
+                                this.sendHttp(this.makeUrl(press[i]), press[i]);
+                            }
+                            else {
+                                this.newResponse = `by TCP, HTTP not responding`;
+                                // this.newResponse = `by TCP, HTTP not responding, try number: ${this.reconnectionCounter}`;
+                                this.platform.log.debug(`${press[i]} sent by TCP`);
+                                if (press[i].includes('MTR')) {
+                                    press[i] = '#QRE';
+                                }
+                                this.client.write(press[i]);
+                                this.commandLog(press[i]);
+                                this.login();
+                                /*
+                                setTimeout(() => {
+                                    this.sendHttp(this.makeUrl('#PON'), '#PON');
+                                }, 500);
+                                */
+
+                            }
+                        }
                     }
+                    else {
+                        if (!press[i].includes('QVM') || !press[i].includes('RST')) {
+
+                            this.newResponse = `by HTTP, TCP not responding`;
+                            this.commandLog(press[i]);
+                            if (this.config.chinoppo === true && press[i].includes('EJT')) {
+                                press[i] = '#PON';
+                            }
+                            this.sendHttp(this.makeUrl(press[i]), press[i]);
+                            if (this.autoIP === true) {
+                                this.discoveryUDP();
+                            }
+                            else {
+                                //////Trying to reconnect TCP
+                                this.client.end();
+                                delete this.client;
+                                this.netConnect();
+                            }
+
+                        }
+                    }
+                    i += 1;
                 }
             }
             else {
-                if (!press[i].includes('QVM') || !press[i].includes('QFN') || !press[i].includes('RST')) {
-
-                    this.newResponse = `by HTTP, TCP not responding (${this.httpNotResponding})`;
-                    this.commandLog(press[i]);
-                    if (this.config.chinoppo === true && press[i].includes('EJT')) {
-                        press[i] = '#PON';
-                    }
-                    this.sendHttp(this.makeUrl(press[i]), press[i]);
-                    //////Trying to reconnect TCP
-                    this.client.end();
-                    delete this.client;
-                    this.netConnect();
-
-                }
+                this.platform.log.debug('IP address is not valid');
             }
-            i += 1;
+
+        }
+        else {
+            this.platform.log('IP not set yet');
+            // this.helloMessage();
         }
     }
     ///////Send HTTP command///////////////////////////
-    sendHttp(url, key) {
+    sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    async sendHttp(url, key) {
+        if (this.tvService.getCharacteristic(this.platform.Characteristic.Active).value === 0 && !key.includes('POF') && !key.includes('QPW')) {
+            this.sending([this.pressedButton('POWER ON')]);
+            await this.sleep(1000);
+        }
         this.platform.log.debug(url);
         this.platform.log.debug(key);
         this.httpNotResponding += 1;
@@ -2282,10 +2419,13 @@ class oppoAccessory {
                     this.httpNotResponding = 0;
                     this.httpEventDecoder(parsedData, key);
                 } catch (e) {
+                    // this.login();
                     //console.error(e.message);
+                    //this.platform.log(e);
                 }
             });
         }).on('error', (e) => {
+            // this.login();
             // console.error(`Got error: ${e.message}`);
         });
     }
@@ -2376,9 +2516,6 @@ class oppoAccessory {
             Key = Key.replace(/\s/g, '');
             this.platform.log.debug('Key to be sent by HTTP: ' + Key);
             let url = "http://" + this.OPPO_IP + ":436/sendremotekey?%7B%22key%22%3A%22" + Key + "%22%7D";
-            if (!Key.includes('QVM')) {
-                // this.platform.log(`Sending: ${this.commandName(key)} ${this.newResponse}`);
-            }
             this.platform.log.debug(url);
             return url
         }
@@ -2760,7 +2897,7 @@ class oppoAccessory {
             }
             /////////////////////////////////Verbose Mode/////////////////////////////////////////
             else if (res[i].includes('QVM OK 2')) {
-                this.resetCouter();
+                this.resetCounter();
                 this.platform.log.debug(`Response: Verbose Mode 2`);
                 if (this.config.movieControl === true || this.config.chapterControl === true || this.config.chapterSelector === true) {
                     this.sending([this.pressedButton('VERBOSE MODE 3')]);
@@ -2768,11 +2905,11 @@ class oppoAccessory {
                 else {
                     setTimeout(() => {
                         this.sending([this.query('POWER STATUS')]);
-                    }, 200);
+                    }, 500);
                 }
             }
             else if (res[i].includes('SVM OK 2')) {
-                this.resetCouter();
+                this.resetCounter();
                 this.platform.log.debug(`Response: Verbose Mode 2 Executed`);
                 if (this.config.movieControl === true || this.config.chapterControl === true || this.config.chapterSelector === true) {
                     this.sending([this.pressedButton('VERBOSE MODE 3')]);
@@ -2780,35 +2917,35 @@ class oppoAccessory {
                 else {
                     setTimeout(() => {
                         this.sending([this.query('POWER STATUS')]);
-                    }, 200);
+                    }, 500);
                 }
             }
             else if (res[i].includes('QVM OK 3')) {
-                this.resetCouter();
+                this.resetCounter();
                 this.platform.log.debug(`Response: Verbose Mode 3`);
                 if (this.config.movieControl === true || this.config.chapterControl === true || this.config.chapterSelector === true) {
                     setTimeout(() => {
                         this.sending([this.query('POWER STATUS')]);
-                    }, 200);
+                    }, 500);
                 }
                 else {
                     this.sending([this.pressedButton('VERBOSE MODE 2')]);
                 }
             }
             else if (res[i].includes('SVM OK 3')) {
-                this.resetCouter();
+                this.resetCounter();
                 this.platform.log.debug(`Response: Verbose Mode 3 Executed`);
                 if (this.config.movieControl === true || this.config.chapterControl === true || this.config.chapterSelector === true) {
                     setTimeout(() => {
                         this.sending([this.query('POWER STATUS')]);
-                    }, 200);
+                    }, 500);
                 }
                 else {
                     this.sending([this.pressedButton('VERBOSE MODE 2')]);
                 }
             }
             else if (res[i].includes('QVM OK 0')) {
-                this.resetCouter();
+                this.resetCounter();
                 this.platform.log.debug(`Response: Verbose Mode 0`);
                 if (this.config.movieControl === true || this.config.chapterControl === true || this.config.chapterSelector === true) {
                     this.sending([this.pressedButton('VERBOSE MODE 3')]);
@@ -2820,12 +2957,12 @@ class oppoAccessory {
             ///////////////Power Status/////////////////////////////////////////////////////////////////////
             else if (res[i].includes('QPW OK OFF')) {
                 this.platform.log.debug(`Response: Power Status Query Executed (Off)`);
-                this.resetCouter();
+                this.resetCounter();
                 this.turnOffAll();
             }
             else if (res[i].includes('POF OK')) {
                 this.platform.log(`Response: ${this.commandName(res[i])} ${this.newResponse}`);
-                this.resetCouter();
+                this.resetCounter();
                 this.turnOffAll();
             }
             else if (res[i].includes('UPW 0') || res[i].includes('OK UPW 0')) {
@@ -2862,13 +2999,13 @@ class oppoAccessory {
             }
             else if (res[i].includes('PON OK')) {
                 this.platform.log(`Response: ${this.commandName(res[i])}`);
-                this.resetCouter();
+                this.resetCounter();
                 this.newPowerState(true);
             }
             else if (res[i].includes('QPW OK ON')) {
                 this.platform.log(`Response: Power Status Query Executed (On)`);
                 this.newPowerState(true);
-                this.resetCouter();
+                this.resetCounter();
                 if (this.firstConnection === true) {
                     this.platform.log.debug('First Update');
                     if (this.reconnectionCounter < this.reconnectionTry) {
@@ -2942,14 +3079,14 @@ class oppoAccessory {
             }
             else if (res[i].includes('QCR OK')) {
                 this.platform.log(`Response: ${res[i]}`);
-                this.resetCouter();
+                this.resetCounter();
                 if (this.chapterFirstUpdate === true) {
                     this.chapterRemainingFirst = this.timeToSeconds(this.justNumber(res[i]));
                 }
             }
             else if (res[i].includes('QCE OK')) {
                 this.platform.log.debug(`Response: ${res[i]}`);
-                this.resetCouter();
+                this.resetCounter();
                 if (this.chapterFirstUpdate === true) {
                     this.chapterElapsedFirst = this.timeToSeconds(this.justNumber(res[i]));
                     setTimeout(() => {
@@ -2967,7 +3104,7 @@ class oppoAccessory {
                 this.movieRemaining = this.timeToSeconds(this.justNumber(res[i]));
             }
             else if (res[i].includes('QCH OK')) {
-                this.resetCouter();
+                this.resetCounter();
                 this.platform.log(`Response: ${res[i]}`);
                 let numberArray = this.justNumber(res[i]).split('/')
                 let number = parseInt(numberArray[0])
@@ -3003,17 +3140,17 @@ class oppoAccessory {
                 this.platform.log(`Response: ${this.commandName(res[i])}`);
                 if (res[i].includes('UMT')) {
                     this.newVolumeStatus(this.targetVolume);
-                    this.resetCouter();
+                    this.resetCounter();
                 }
                 else if (!res[i].includes('MUT')) {
                     let numberOnly = res[i].replace(/^\D+/g, '');
                     this.newVolumeStatus(parseInt(numberOnly, 10));
                     this.targetVolume = numberOnly;
-                    this.resetCouter();
+                    this.resetCounter();
                 }
                 else {
                     this.newVolumeStatus(0);
-                    this.resetCouter();
+                    this.resetCounter();
                 }
                 if (this.commandChain === true) {
                     this.platform.log("Second chain response received")
@@ -3024,21 +3161,21 @@ class oppoAccessory {
                 if (res[i].includes('MUTE')) {
                     this.platform.log(`Response: Mute Executed (SVL)`);
                     this.newVolumeStatus(0);
-                    this.resetCouter();
+                    this.resetCounter();
                 }
                 else {
                     let numberOnly = res[i].replace(/^\D+/g, '')
                     this.platform.log(`Response: Volume set to ${numberOnly} (SVL)`);
                     this.newVolumeStatus(parseInt(numberOnly, 10));
                     this.targetVolume = numberOnly;
-                    this.resetCouter();
+                    this.resetCounter();
                 }
             }
 
             //////Playback update/////////////////////////////////////////////////////////////
             else if (res[i].includes('OK PLAY') || res[i].includes('PLA OK')) {
                 this.platform.log(`Response: Play Executed (OK)`);
-                this.resetCouter();
+                this.resetCounter();
                 this.newPlayBackState([true, false, false]);
                 this.sending([this.query('MTR')]);
                 if (this.commandChain === true) {
@@ -3093,7 +3230,7 @@ class oppoAccessory {
             }
             else if (res[i].includes('OK PAUSE') || res[i].includes('PAU OK')) {
                 this.platform.log(`Response: Pause Executed`);
-                this.resetCouter();
+                this.resetCounter();
                 this.newPlayBackState([false, true, false]);
                 if (this.commandChain === true) {
                     this.platform.log("Third chain response received")
@@ -3111,7 +3248,7 @@ class oppoAccessory {
             }
             else if (res[i].includes('OK STOP') || res[i].includes('STP OK')) {
                 this.platform.log(`Response: Stop Executed`);
-                this.resetCouter();
+                this.resetCounter();
                 this.newPlayBackState([false, false, false]);
                 this.newAudioType([false, false]);
                 this.newHDRState([false, false, true]);
@@ -3149,7 +3286,7 @@ class oppoAccessory {
             else if (res[i].includes('OK STEP') || res[i].includes('OK FREV') || res[i].includes('OK FFWD') || res[i].includes('OK SFWD')
                 || res[i].includes('OK SREV') || res[i].includes('ER OVERTIME') || res[i].includes('OK MEDIA') || res[i].includes('OK SETUP')
                 || res[i].includes('OK SCREEN') || res[i].includes('OK DISC')) {
-                this.resetCouter();
+                this.resetCounter();
                 this.newPlayBackState([false, false, false]);
                 this.platform.log(`Response: ${this.commandName(res[i])}`);
                 if (this.commandChain === true) {
@@ -3161,7 +3298,7 @@ class oppoAccessory {
             else if (res[i].includes('HOME MENU') || res[i].includes('UPL HOME')) {
                 this.platform.log(`Response: ${this.commandName(res[i])}`);
                 if (res[i].includes('HOME MENU')) {
-                    this.resetCouter();
+                    this.resetCounter();
                 }
                 this.newPowerState(true);
                 this.newPlayBackState([false, false, false]);
@@ -3264,7 +3401,7 @@ class oppoAccessory {
                     this.platform.log(`Response: ${this.commandName(res[i])} ${this.newResponse}`);
                 }
                 if (res[i].includes('OK')) {
-                    this.resetCouter();
+                    this.resetCounter();
                 }
             }
             i += 1;
@@ -3891,7 +4028,7 @@ class oppoAccessory {
         return key;
     }
     ////Update instructions
-    resetCouter() {
+    resetCounter() {
         this.reconnectionCounter = 0;
         this.connectionLimit = false;
         this.connectionLimitStatus = 0;
@@ -3912,7 +4049,7 @@ class oppoAccessory {
         }
     }
     updateHDRStatus(newHDR) {
-        this.resetCouter();
+        this.resetCounter();
         this.newHDRState(newHDR);
         this.firstConnection = false;
         this.commandChain = false;
@@ -3947,4 +4084,3 @@ class oppoAccessory {
         this.movieChapterDefault();
     }
 }
-
