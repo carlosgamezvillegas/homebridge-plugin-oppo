@@ -1,4 +1,9 @@
 # Changelog
+## [4.0.0] - 2022-05-07
+### Changed
+- the device no longers opens the tray when turned on from the Homekit remote control
+### Added
+- The device IP can be found automatically now, it takes 10 seconds to capture UDP broadcast
 ## [3.2.3] - 2022-04-16
 - Bug fixes
 ## [3.2.2] - 2022-03-08
