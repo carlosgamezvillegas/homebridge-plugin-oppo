@@ -4,6 +4,9 @@
 ## HomeKit integration for Oppo UDP 203/205
 
 [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
+[![homebridge-oppo-udp](https://badgen.net/npm/v/homebridge-oppo-udp?icon=npm)](https://www.npmjs.com/package/homebridge-oppo-udp)
+[![mit-license](https://badgen.net/npm/license/lodash)](https://github.com/merdok/homebridge-plugin-oppo/blob/master/LICENSE)
+</span>
 
 </span>
 
