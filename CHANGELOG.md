@@ -1,13 +1,16 @@
 # Changelog
+## [4.0.1] - 2022-07-09
+### Changed
+- A Typo in the code that prevented the code to load correctly was fixed
 ## [4.0.0] - 2022-05-07
 ### Changed
-- the device no longers opens the tray when turned on from the Homekit remote control
+- The device no longers opens the tray when turned on from the Homekit remote control
 ### Added
 - The device IP can be found automatically now, it takes 10 seconds to capture UDP broadcast
 ## [3.2.3] - 2022-04-16
 - Bug fixes
 ## [3.2.2] - 2022-03-08
-- Statetless switch (button) goes to off state faster
+- Stateless switch (button) goes to off state faster
 - Fixed a typo that prevented one button to be created
 ## [3.2.1] - 2022-02-22
 - Fixed typo that prevented the plugin from loading
@@ -15,14 +18,13 @@
 - Bug fixes
 ### Changed
 - Improvements in text
-- Improvemtns in Current State of the device
+- improvements to the Current State of the device
 - Power Switch is optional
 ### Added
 - Sound and Video State Sensors are optional
 - Movie Progress, Chapter Progress, and Chapter Selector can be added individually
 ### Note
 - To avoid any HTTP communication issues connect to the 
-
 ## [3.1.3] - 2021-03-27
 - Bug fixes
 ## [3.1.1] - 2021-03-14
@@ -32,7 +34,7 @@
 ## [3.1.0] - 2021-03-07
 - Bug fixes
 ### Changed
-- Most of the commands are sent though HTTP now. HTTP is more reliable and even when the Sensor "Oppo Not Responding" is on, the device will continue to excute most of the commands. When "Oppo Not Responding" is on, query requests and other request are not going to work. 
+- Most of the commands are sent through HTTP now. HTTP is more reliable and even when the Sensor "Oppo Not Responding" is on, the device will continue to execute most of the commands. When "Oppo Not Responding" is on, query requests and other requests are not going to work. 
 ## [3.0.3] - 2021-02-27
 - Bug fixes
 ## [3.0.2] - 2021-02-22
@@ -67,7 +69,7 @@
 - Improved Oppo status reporting
 - Improved error logging
 ## [2.3.1] - 2021-01-17
-- Exposes the Oppo as a TV Accessory (If you are updating the plugin you need remove it from the Home app and add it again to see the change)
+- Exposes the Oppo as a TV Accessory (If you are updating the plugin you need to remove it from the Home app and add it again to see the change)
 ## [2.2.1] - 2021-01-16
 - Bug fixes
 ## [1.5.0] - 2021-01-13
@@ -76,5 +78,5 @@
 - Improved error logging
 ### Added
 - Current Media Status
-- Input sourse selection
+- Input source selection
 - Volume control in TV remote control
