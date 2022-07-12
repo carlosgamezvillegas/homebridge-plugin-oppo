@@ -1899,7 +1899,6 @@ class oppoAccessory {
             this.accessory.removeService(this.ejectDisc);
         }
         //////////////////Connecting to Oppo
-        this.udpServer();
         if (this.config.autoIP === true) {
             this.discoveryUDP();
         }
