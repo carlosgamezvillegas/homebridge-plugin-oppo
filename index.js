@@ -124,7 +124,6 @@ class oppoAccessory {
         this.newResponse = '';
         //Device Information//////////////////////////////////////////////////////////////////////////////////////
         this.config.name = platform.config.name || 'Oppo 203';
-        this.config.ip = platform.config.ip;
         this.config.manufacture = platform.config.manufacture || 'Oppo';
         this.config.pollingInterval = platform.config.pollingInterval || 1000;
         this.config.modelName = platform.config.modelName || 'UDP-203';
@@ -182,6 +181,7 @@ class oppoAccessory {
         this.config.chinoppo = platform.config.chinoppo || false;
         this.config.powerB = platform.config.powerB || false;
         this.config.mediaAudioVideoState = platform.config.mediaAudioVideoState || false;
+        this.config.changeDimmersToFan = platform.config.changeDimmersToFan || false;
         if (this.config.autoIP === true) {
             //this.platform.log('set to false');
             this.config.autoIP = false;
@@ -192,7 +192,7 @@ class oppoAccessory {
         }
         ////Checking if the necessary information was given by the user////////////////////////////////////////////////////
         try {
-            if (!this.config.ip && this.config.autoIP === false) {
+            if (!this.OPPO_IP && this.config.autoIP === false) {
                 throw new Error(`Oppo IP address is required for ${this.config.name}`);
             }
         } catch (error) {
@@ -532,6 +532,7 @@ class oppoAccessory {
         this.tvService.addLinkedService(this.speakerService);
         /////Video/Movie Controls/////////////////////////////////////////////////////////////////////
         if (this.config.movieControl === true) {
+            if (this.config.changeDimmersToFan === false) {
             this.movieControlL = this.accessory.getService('Movie Progress') ||
                 this.accessory.addService(this.platform.Service.Lightbulb, 'Movie Progress', 'YourUniqueIdentifier-301');
             this.movieControlL.setCharacteristic(this.platform.Characteristic.Name, 'Movie Progress');
@@ -558,7 +559,39 @@ class oppoAccessory {
                     callback(null);
                 });
         }
-        if (this.config.chapterSelector === true) {
+        else {
+            this.movieControlF = this.accessory.getService('Movie Progress') ||
+                this.accessory.addService(this.platform.Service.Fanv2, 'Movie Progress', 'YourUniqueIdentifier-301F');
+            this.movieControlF.setCharacteristic(this.platform.Characteristic.Name, 'Movie Progress');
+            this.movieControlF.getCharacteristic(this.platform.Characteristic.Active)
+                .on('get', (callback) => {
+                    let currentValue = 0;
+                    if (this.currentMovieProgressState === true) {
+                        currentValue = 1;
+                    }
+                    callback(null, currentValue);
+                })
+                .on('set', (newValue, callback) => {
+                    this.platform.log('Movie progress state set to: ' + newValue);
+                    callback(null);
+                });
+            this.movieControlF.addCharacteristic(new this.platform.Characteristic.RotationSpeed)
+                .on('get', (callback) => {
+                    let currentValue = this.currentMovieProgress;
+                    callback(null, currentValue);
+                })
+                .on('set', (newValue, callback) => {
+                    let newSendValue = Math.round(newValue * (this.firstElapsedMovie + this.movieRemaining) / 100);
+                    let totalMovieTime = this.firstElapsedMovie + this.movieRemaining;
+                    if (newSendValue > totalMovieTime) { newSendValue = totalMovieTime; }
+                    this.sending([this.movieTime(this.secondsToTime(newSendValue))]);
+                    this.platform.log('Movie progress set to: ' + newValue + '%');
+                    callback(null);
+                });
+        }
+    }
+    if (this.config.chapterSelector === true) {
+        if (this.config.changeDimmersToFan === false) {
             this.chapterSelectorL = this.accessory.getService('Chapter Number') ||
                 this.accessory.addService(this.platform.Service.Lightbulb, 'Chapter Number', 'YourUniqueIdentifier-302');
             this.chapterSelectorL.setCharacteristic(this.platform.Characteristic.Name, 'Chapter Number');
@@ -585,7 +618,39 @@ class oppoAccessory {
                     callback(null);
                 });
         }
-        if (this.config.chapterControl === true) {
+        else {
+            this.chapterSelectorF = this.accessory.getService('Chapter Number') ||
+                this.accessory.addService(this.platform.Service.Fanv2, 'Chapter Number', 'YourUniqueIdentifier-302F');
+            this.chapterSelectorF.setCharacteristic(this.platform.Characteristic.Name, 'Chapter Number');
+            this.chapterSelectorF.getCharacteristic(this.platform.Characteristic.Active)
+                .on('get', (callback) => {
+                    let currentValue = 0;
+                    if (this.currentChapterSelectorState === true) {
+                        currentValue = 1;
+                    }
+                    callback(null, currentValue);
+                })
+                .on('set', (newValue, callback) => {
+                    this.platform.log('Chapter state set to: ' + newValue);
+                    callback(null);
+                });
+            this.chapterSelectorF.addCharacteristic(new this.platform.Characteristic.RotationSpeed)
+                .on('get', (callback) => {
+                    let currentValue = this.currentChapterSelector[0];
+                    callback(null, currentValue);
+                })
+                .on('set', (newValue, callback) => {
+                    if (newValue >= this.currentChapterSelector[1]) {
+                        newValue = this.currentChapterSelector[1]
+                    }
+                    this.sending([this.chapterChange(newValue)]);
+                    this.platform.log('Chapter number set to: ' + newValue);
+                    callback(null);
+                });
+        }
+    }
+    if (this.config.chapterControl === true) {
+        if (this.config.changeDimmersToFan === false) {
             this.chapterControlL = this.accessory.getService('Chapter Progress') ||
                 this.accessory.addService(this.platform.Service.Lightbulb, 'Chapter Progress', 'YourUniqueIdentifier-303');
             this.chapterControlL.setCharacteristic(this.platform.Characteristic.Name, 'Chapter Progress');
@@ -612,6 +677,37 @@ class oppoAccessory {
                     callback(null);
                 });
         }
+        else {
+            this.chapterControlF = this.accessory.getService('Chapter Progress') ||
+                this.accessory.addService(this.platform.Service.Fanv2, 'Chapter Progress', 'YourUniqueIdentifier-303F');
+            this.chapterControlF.setCharacteristic(this.platform.Characteristic.Name, 'Chapter Progress');
+            this.chapterControlF.getCharacteristic(this.platform.Characteristic.Active)
+                .on('get', (callback) => {
+                    let currentValue = 0;
+                    if (this.currentChapterTimeState === true) {
+                        currentValue = 1;
+                    }
+                    callback(null, currentValue);
+                })
+                .on('set', (newValue, callback) => {
+                    this.platform.log('Chapter progress status set to: ' + newValue);
+                    callback(null);
+                });
+            this.chapterControlF.addCharacteristic(new this.platform.Characteristic.RotationSpeed)
+                .on('get', (callback) => {
+                    let currentValue = this.currentChapterTime;
+                    callback(null, currentValue);
+                })
+                .on('set', (newValue, callback) => {
+                    let newSendValue = Math.round(newValue * (this.chapterElapsedFirst + this.chapterRemainingFirst) / 100);
+                    let totalChapterTime = this.chapterElapsedFirst + this.chapterRemainingFirst;
+                    if (newSendValue > totalChapterTime) { newSendValue = totalChapterTime; }
+                    this.sending([this.chapterTime(this.secondsToTime(newSendValue))]);
+                    this.platform.log('Chapter progress set to: ' + newValue + '%');
+                    callback(null);
+                });
+        }
+    }
         /////////////Addtional Services////////////////////////////////////////////////////////////////////////////////////
         if (this.config.powerB === true) {
             this.service = this.accessory.getService(this.platform.Service.Switch) || this.accessory.addService(this.platform.Service.Switch);
@@ -777,8 +873,9 @@ class oppoAccessory {
                     });
             }
         }
-        //////Volume control Service as lightbulb////////////////////////////////////////////////////////////////////////////
-        if (this.config.volume === true) {
+  //////Volume control Service as lightbulb or fan////////////////////////////////////////////////////////////////////////////
+  if (this.config.volume === true) {
+    if (this.config.changeDimmersToFan === false) {
             this.volumeDimmer = this.accessory.getService('Oppo Volume') ||
                 this.accessory.addService(this.platform.Service.Lightbulb, 'Oppo Volume', 'YourUniqueIdentifier-98');
             this.volumeDimmer.getCharacteristic(this.platform.Characteristic.On)
@@ -813,6 +910,44 @@ class oppoAccessory {
                     callback(null);
                 });
         }
+        else {
+            this.volumeFan = this.accessory.getService('Oppo Volume') ||
+                this.accessory.addService(this.platform.Service.Fanv2, 'Oppo Volume', 'YourUniqueIdentifier-98F');
+            this.volumeFan.getCharacteristic(this.platform.Characteristic.Active)
+                .on('get', (callback) => {
+                    let currentValue = 0;
+                    if (this.currentVolumeSwitch === true) {
+                        currentValue = 1;
+                    }
+                    callback(null, currentValue);
+                })
+                .on('set', (newValue, callback) => {
+                    let newVolume = this.targetVolume;
+                    if (newValue === 1) {
+                        this.sending([this.volumeChange(newVolume)]);
+                        this.platform.log.debug('Volume Value set to: Unmute');
+                    }
+                    if (newValue === 0) {
+                        newVolume = 0;
+                        this.sending([this.volumeChange(newVolume)]);
+                        this.platform.log.debug('Volume Value set to: Mute');
+                    }
+
+                    callback(null);
+                });
+
+            this.volumeFan.addCharacteristic(new this.platform.Characteristic.RotationSpeed)
+                .on('get', (callback) => {
+                    let currentValue = this.currentVolume;
+                    callback(null, currentValue);
+                })
+                .on('set', (newValue, callback) => {
+                    this.sending([this.volumeChange(newValue)]);
+                    this.platform.log.debug('Volume Value set to: ' + newValue);
+                    callback(null);
+                });
+        }
+    }
         ////other Controls /////////////////////////////////////////////////////////
         if (this.config.cursorUpB === true) {
             this.cursorUp = this.accessory.getService('Cursor Up') ||
@@ -1746,12 +1881,15 @@ class oppoAccessory {
         }
         if (this.config.movieControl === false) {
             this.accessory.removeService(this.movieControlL);
+            this.accessory.removeService(this.movieControlF);
         }
         if (this.config.chapterControl === false) {
             this.accessory.removeService(this.chapterControlL);
+            this.accessory.removeService(this.chapterControlF);
         }
         if (this.config.chapterSelector === false) {
             this.accessory.removeService(this.chapterSelectorL);
+            this.accessory.removeService(this.chapterSelectorF);
         }
         if (this.config.inputButtons == false) {
             this.accessory.removeService(this.bluRayInput);
@@ -1763,6 +1901,19 @@ class oppoAccessory {
         }
         if (this.config.volume === false) {
             this.accessory.removeService(this.volumeDimmer);
+            this.accessory.removeService(this.volumeFan);
+        }
+        if (this.config.changeDimmersToFan === false) {
+            this.accessory.removeService(this.volumeFan);
+            this.accessory.removeService(this.chapterSelectorF);
+            this.accessory.removeService(this.chapterControlF);
+            this.accessory.removeService(this.movieControlF);
+        }
+        if (this.config.changeDimmersToFan === true) {
+            this.accessory.removeService(this.volumeDimmer);
+            this.accessory.removeService(this.chapterSelectorL);
+            this.accessory.removeService(this.chapterControlL);
+            this.accessory.removeService(this.movieControlL);
         }
         if (this.config.cursorUpB === false) {
             this.accessory.removeService(this.cursorUp);
@@ -1961,12 +2112,24 @@ class oppoAccessory {
                 this.newVolumeStatus(this.currentVolume);
             }
             if (this.config.movieControl === true) {
-                this.movieControlL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentMovieProgress);
-                this.movieControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentMovieProgressState);
+                if (this.config.changeDimmersToFan === false) {
+                    this.movieControlL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentMovieProgress);
+                    this.movieControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentMovieProgressState);
+                }
+                else {
+                    this.movieControlF.updateCharacteristic(this.platform.Characteristic.RotationSpeed, this.currentMovieProgress);
+                    this.movieControlF.updateCharacteristic(this.platform.Characteristic.Active, this.currentMovieProgressState === true ? 1 : 0);
+                }
             }
             if (this.config.chapterControl === true) {
-                this.chapterControlL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentChapterTime);
-                this.chapterControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentChapterTimeState);
+                if (this.config.changeDimmersToFan === false) {
+                    this.chapterControlL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentChapterTime);
+                    this.chapterControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentChapterTimeState);
+                }
+                else {
+                    this.chapterControlF.updateCharacteristic(this.platform.Characteristic.RotationSpeed, this.currentChapterTime);
+                    this.chapterControlF.updateCharacteristic(this.platform.Characteristic.Active, this.currentChapterTimeState === true ? 1 : 0);
+                }
             }
             if (this.config.chapterSelector === true) {
                 this.newChapter(this.currentChapterSelector[0]);
@@ -2397,14 +2560,18 @@ class oppoAccessory {
         }
     }
     ///////Send HTTP command///////////////////////////
+    /*
     sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
+    */
     async sendHttp(url, key) {
+        /*
         if (this.tvService.getCharacteristic(this.platform.Characteristic.Active).value === 0 && !key.includes('POF') && !key.includes('QPW')) {
             this.sending([this.pressedButton('POWER ON')]);
             await this.sleep(1000);
         }
+        */
         this.platform.log.debug(url);
         this.platform.log.debug(key);
         this.httpNotResponding += 1;
@@ -2463,7 +2630,8 @@ class oppoAccessory {
             return url
         }
         else if (key.includes('PON')) {
-            let url = "http://" + this.OPPO_IP + ":436/signin?%7B%22appIconType%22%3A1%2C%22appIpAddress%22%3A%22" + this.localIP + "%22%7D";
+// let url = "http://" + this.OPPO_IP + ":436/signin?%7B%22appIconType%22%3A1%2C%22appIpAddress%22%3A%22" + this.localIP + "%22%7D";
+let url = "http://" + this.OPPO_IP + ":436/signin?%7B%22appIpAddress%22%3A%22" + this.localIP + "%22%2C%22appIconType%22%3A1%7D";
             this.platform.log.debug(`Sending: ${this.commandName(key)} ${this.newResponse}`);
             this.platform.log.debug(url);
             return url
@@ -2536,10 +2704,18 @@ class oppoAccessory {
             this.speakerService.getCharacteristic(this.platform.Characteristic.Volume).updateValue(this.currentVolume);
             this.speakerService.getCharacteristic(this.platform.Characteristic.Mute).updateValue(this.currentMuteState)
             if (this.config.volume === true) {
-                this.volumeDimmer.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentVolume);
-                this.volumeDimmer.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentVolume);
-                this.volumeDimmer.updateCharacteristic(this.platform.Characteristic.On, this.currentVolumeSwitch);
-                this.volumeDimmer.getCharacteristic(this.platform.Characteristic.On).updateValue(this.currentVolumeSwitch);
+                if (this.config.changeDimmersToFan === false) {
+                    this.volumeDimmer.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentVolume);
+                    this.volumeDimmer.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentVolume);
+                    this.volumeDimmer.updateCharacteristic(this.platform.Characteristic.On, this.currentVolumeSwitch);
+                    this.volumeDimmer.getCharacteristic(this.platform.Characteristic.On).updateValue(this.currentVolumeSwitch);
+                }
+                else {
+                    this.volumeFan.updateCharacteristic(this.platform.Characteristic.RotationSpeed, this.currentVolume);
+                    this.volumeFan.getCharacteristic(this.platform.Characteristic.RotationSpeed).updateValue(this.currentVolume);
+                    this.volumeFan.updateCharacteristic(this.platform.Characteristic.Active, this.currentVolumeSwitch === true ? 1 : 0);
+                    this.volumeFan.getCharacteristic(this.platform.Characteristic.Active).updateValue(this.currentVolumeSwitch === true ? 1 : 0);
+                }
             }
         }
     }
@@ -2570,11 +2746,21 @@ class oppoAccessory {
             }
             this.currentChapterSelector[0] = newChapter;
             if (this.config.chapterSelector === true) {
+                if (this.config.changeDimmersToFan === false) {
                 if (this.chapterSelectorL.getCharacteristic(this.platform.Characteristic.Brightness).value !== this.currentChapterSelector[0]) {
                     this.chapterSelectorL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentChapterSelector[0]);
                     this.chapterSelectorL.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentChapterSelector[0]);
                     this.chapterSelectorL.updateCharacteristic(this.platform.Characteristic.On, this.currentChapterSelectorState);
                     this.chapterSelectorL.getCharacteristic(this.platform.Characteristic.On).updateValue(this.currentChapterSelectorState);
+                }
+            }
+            else {
+                if (this.chapterSelectorF.getCharacteristic(this.platform.Characteristic.RotationSpeed).value !== this.currentChapterSelector[0]) {
+                    this.chapterSelectorF.updateCharacteristic(this.platform.Characteristic.RotationSpeed, this.currentChapterSelector[0]);
+                    this.chapterSelectorF.getCharacteristic(this.platform.Characteristic.RotationSpeed).updateValue(this.currentChapterSelector[0]);
+                    this.chapterSelectorF.updateCharacteristic(this.platform.Characteristic.Active, this.currentChapterSelectorState === true ? 1 : 0);
+                    this.chapterSelectorF.getCharacteristic(this.platform.Characteristic.Active).updateValue(this.currentChapterSelectorState === true ? 1 : 0);
+                }
                 }
             }
         }
@@ -2595,11 +2781,22 @@ class oppoAccessory {
         }
         if (this.currentChapterTime > 100) { this.currentChapterTime = 100 }
         if (this.config.chapterControl === true) {
+            if (this.config.changeDimmersToFan === false) {
             if (this.chapterControlL.getCharacteristic(this.platform.Characteristic.Brightness).value !== this.currentChapterTime) {
                 this.chapterControlL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentChapterTime);
                 this.chapterControlL.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentChapterTime);
                 this.chapterControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentChapterTimeState);
                 this.chapterControlL.getCharacteristic(this.platform.Characteristic.On).updateValue(this.currentChapterTimeState);
+            }
+        }
+        else {
+            if (this.chapterControlF.getCharacteristic(this.platform.Characteristic.RotationSpeed).value !== this.currentChapterTime) {
+                this.chapterControlF.updateCharacteristic(this.platform.Characteristic.RotationSpeed, this.currentChapterTime);
+                this.chapterControlF.getCharacteristic(this.platform.Characteristic.RotationSpeed).updateValue(this.currentChapterTime);
+                this.chapterControlF.updateCharacteristic(this.platform.Characteristic.Active, this.currentChapterTimeState === true ? 1 : 0);
+                this.chapterControlF.getCharacteristic(this.platform.Characteristic.Active).updateValue(this.currentChapterTimeState === true ? 1 : 0);
+            }
+
             }
         }
     }
@@ -2619,11 +2816,21 @@ class oppoAccessory {
         }
         if (this.currentMovieProgress > 100) { this.currentMovieProgress = 100 }
         if (this.config.movieControl === true) {
-            if (this.movieControlL.getCharacteristic(this.platform.Characteristic.Brightness).value !== this.currentMovieProgress) {
-                this.movieControlL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentMovieProgress);
-                this.movieControlL.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentMovieProgress);
-                this.movieControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentMovieProgressState);
-                this.movieControlL.getCharacteristic(this.platform.Characteristic.On).updateValue(this.currentMovieProgressState);
+            if (this.config.changeDimmersToFan === false) {
+                if (this.movieControlL.getCharacteristic(this.platform.Characteristic.Brightness).value !== this.currentMovieProgress) {
+                    this.movieControlL.updateCharacteristic(this.platform.Characteristic.Brightness, this.currentMovieProgress);
+                    this.movieControlL.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(this.currentMovieProgress);
+                    this.movieControlL.updateCharacteristic(this.platform.Characteristic.On, this.currentMovieProgressState);
+                    this.movieControlL.getCharacteristic(this.platform.Characteristic.On).updateValue(this.currentMovieProgressState);
+                }
+            }
+            else {
+                if (this.movieControlF.getCharacteristic(this.platform.Characteristic.RotationSpeed).value !== this.currentMovieProgress) {
+                    this.movieControlF.updateCharacteristic(this.platform.Characteristic.RotationSpeed, this.currentMovieProgress);
+                    this.movieControlF.getCharacteristic(this.platform.Characteristic.RotationSpeed).updateValue(this.currentMovieProgress);
+                    this.movieControlF.updateCharacteristic(this.platform.Characteristic.Active, this.currentMovieProgressState === true ? 1 : 0);
+                    this.movieControlF.getCharacteristic(this.platform.Characteristic.Active).updateValue(this.currentMovieProgressState === true ? 1 : 0);
+                }
             }
         }
     }
