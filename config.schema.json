@@ -312,7 +312,13 @@
         "required": false
       },
       "autoIP": {
-        "title": "Set the IP ddress manually. Use this option if the device cannot be found automatically",
+        "title": "Set the IP address manually. Use this option if the device cannot be found automatically",
+        "type": "boolean",
+        "required": false,
+        "default": false
+              },
+      "changeDimmersToFan": {
+        "title": "Enable this if you would like to change the Volume, Movie Progress, Chapter progress, or the Chapter Selector from Dimmers to Fans. This option is useful to avoid issues with Siri commands like 'Turn off all the lights'",
         "type": "boolean",
         "required": false,
         "default": false
@@ -401,6 +407,9 @@
         },
         {
           "key": "mediaAudioVideoState"
+        },
+        {
+          "key": "changeDimmersToFan"
         }
       ]
     },
