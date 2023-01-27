@@ -1,4 +1,10 @@
 # Changelog
+## [4.1.0] - 2022-08-31
+### Added
+-Added the ability to change the Volume, Movie Progress, Chapter Progress, and the Chapter Selector from Dimmers to Fans
+## [4.0.2] - 2023-01-20
+### Changed
+- An infinite commonad loop has been fixed preventing Homebridge from crashing
 ## [4.0.1] - 2022-07-09
 ### Changed
 - A Typo in the code that prevented the code to load correctly was fixed
@@ -80,3 +86,4 @@
 - Current Media Status
 - Input source selection
 - Volume control in TV remote control
+
