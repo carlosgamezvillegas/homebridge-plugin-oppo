@@ -1,5 +1,5 @@
 # Changelog
-## [4.1.0] - 2022-08-31
+## [4.1.0] - 2023-01-26
 ### Added
 -Added the ability to change the Volume, Movie Progress, Chapter Progress, and the Chapter Selector from Dimmers to Fans
 ## [4.0.2] - 2023-01-20
