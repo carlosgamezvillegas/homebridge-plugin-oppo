@@ -2,7 +2,7 @@
   "pluginAlias": "oppoPlugin",
   "pluginType": "platform",
   "singular": true,
-  "headerDisplay": "This plugin is provided by [carlosgamezvillegas](https://github.com/carlosgamezvillegas/)he device must be [added manually](https://github.com/carlosgamezvillegas/homebridge-plugin-oppo#adding-the-oppo-to-the-home-app) in the Home app.",
+  "headerDisplay": "This plugin is provided by [carlosgamezvillegas](https://github.com/carlosgamezvillegas/). The device must be [added manually](https://github.com/carlosgamezvillegas/homebridge-plugin-oppo#adding-the-oppo-to-the-home-app) in the Home app.",
   "schema": {
     "type": "object",
     "properties": {
@@ -66,6 +66,11 @@
         "type": "boolean",
         "required": false
       },
+      "remainMovieTimer": {
+        "title": "Add Movie Timer",
+        "type": "boolean",
+        "required": false
+      },
       "movieControl": {
         "title": "Add Movie Progress as a dimmer",
         "type": "boolean",
@@ -82,7 +87,7 @@
         "required": false
       },
       "mediaAudioVideoState": {
-        "title": "Add the Audio and Video State as motion sensors",
+        "title": "Add the Audio and Video Format as motion sensors",
         "type": "boolean",
         "required": false
       },
@@ -316,9 +321,15 @@
         "type": "boolean",
         "required": false,
         "default": false
-              },
+      },
       "changeDimmersToFan": {
         "title": "Enable this if you would like to change the Volume, Movie Progress, Chapter progress, or the Chapter Selector from Dimmers to Fans. This option is useful to avoid issues with Siri commands like 'Turn off all the lights'",
+        "type": "boolean",
+        "required": false,
+        "default": false
+      },
+      "infoToMenu": {
+        "title": "Change Info button to Menu button",
         "type": "boolean",
         "required": false,
         "default": false
@@ -403,6 +414,9 @@
           "key": "chapterControl"
         },
         {
+          "key": "remainMovieTimer"
+        },
+        {
           "key": "chapterSelector"
         },
         {
@@ -410,6 +424,9 @@
         },
         {
           "key": "changeDimmersToFan"
+        },
+        {
+          "key": "infoToMenu"
         }
       ]
     },

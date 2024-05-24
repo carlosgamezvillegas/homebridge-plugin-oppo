@@ -1,7 +1,7 @@
 {
   "displayName": "Homebridge Oppo 203/205",
   "name": "homebridge-oppo-udp",
-  "version": "4.1.0",
+  "version": "5.1.0",
   "description": "Homebridge Plugin to control your Oppo 203/205.",
   "license": "MIT",
   "repository": {
@@ -43,6 +43,12 @@
     "ts-node": "^9.0.0",
     "typescript": "^4.0.5"
   },
+  "funding": [
+    {
+      "type": "paypal",
+      "url": "https://paypal.me/carlosgamezv"
+    }
+  ],
   "homepage": "https://github.com/carlosgamezvillegas/homebridge-plugin-oppo#readme",
   "author": "Carlos Gamez"
 }

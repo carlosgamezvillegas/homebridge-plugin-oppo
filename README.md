@@ -8,8 +8,6 @@
 [![mit-license](https://badgen.net/npm/license/lodash)](https://github.com/merdok/homebridge-plugin-oppo/blob/master/LICENSE)
 </span>
 
-</span>
-
 # What is this?
 
 `homebrige-oppo-udp` is a plugin for Homebridge to Control your Oppo 203/205 from your Home app. It should work with Oppo UDP-203 and UDP-205.
@@ -73,7 +71,7 @@ Example configuration:
 }
 ```
 
-### Adding the Oppo to the Home app
+### Adding th Oppo player to the Home app
 Since HomeKit expects only one Oppo per bridge they will be declared as external accessories and acts as a bridge.  
 This means that a device will not appear in your Home app until you add it!
 
