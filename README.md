@@ -8,6 +8,7 @@
 [![mit-license](https://badgen.net/npm/license/lodash)](https://github.com/merdok/homebridge-plugin-oppo/blob/master/LICENSE)
 </span>
 
+<span align="left">
 # What is this?
 
 `homebrige-oppo-udp` is a plugin for Homebridge to Control your Oppo 203/205 from your Home app. It should work with Oppo UDP-203 and UDP-205.
