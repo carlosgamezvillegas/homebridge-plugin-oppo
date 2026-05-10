@@ -1,4 +1,54 @@
 # Changelog
+## [6.0.1] - 2026-05-09
+- Bug Fixes
+## [6.0.0] - 2026-05-02
+### Changed
+- Updated the Homebridge engine range to `>=1.0.0 || ^2.0.0-alpha.0` for compatibility with Homebridge 2.0 pre-release and stable versions.
+- Refactored constructor-heavy setup into focused builders to reduce initialization complexity:
+  - `buildSpeakerVolumeService()`
+  - `buildVideoMovieControls()`
+  - `buildAdditionalServices()`
+  - `buildInputSources()`
+- Refactored `buildVideoMovieControls()` and `buildAdditionalServices()` to reduce repeated HomeKit service setup blocks while preserving existing service names/IDs and behavior.
+- Reworked event decoding flow so `eventDecoder()` delegates to focused handlers (`handleEventWithRules`, `handlePlaybackEvent`, `handleVolumeEvent`) instead of keeping all logic in one large chain.
+- Replaced repeated branch logic with rule tables for command names/logging, playback states, audio decoding, language decoding, and HTTP route mapping.
+- Updated sync/state propagation to avoid unnecessary HomeKit writes by using `updateCharacteristicIfChanged()`.
+- Improved metadata visibility handling with helper-driven updates (`refreshShowState`, `updateConfiguredNameAndVisibility`, `updateServiceVisibility`).
+- Improved reconnect/timer handling with explicit helpers (`clearReconnectAttempt`, `clearReconnectTimers`, `scheduleReconnectAttempt`, `scheduleTimer`, `cancelScheduledTimersByPrefix`).
+- Improved command dispatch path by extracting command parsing into `extractCommandCode()` and avoiding in-place mutation of outbound command arrays.
+- Switched reusable characteristic wiring from repeated `addCharacteristic(...)` patterns to `getCharacteristic(...)` where appropriate to avoid duplicate characteristic registration risk.
+- Split utility logic into dedicated modules (`lib/command-utils.js`, `lib/runtime-validation.js`) to reduce `index.js` coupling and improve testability.
+- Enabled `// @ts-check` plus JSDoc typedef annotations to strengthen static typing signals in JavaScript code.
+
+### Added
+- New reusable service factories/helpers to centralize HomeKit setup:
+  - `createConfiguredService()`
+  - `createStatefulSwitch()`
+  - `createInputButtonSwitch()`
+  - `createMotionSensorService()`
+  - `createStatelessSwitch()`
+  - `buildDualModeProgressService()`
+  - `createInputSourceService()` / `getOrCreateInputSource()`
+- Added query/transport guard helpers:
+  - query cooldown guard (`canSendQuery`)
+  - command-name cache (`cacheCommandName`)
+  - debug log rate limiter (`debugLogRateLimited`)
+  - TCP write safety wrapper (`safeClientWrite`)
+  - HTTP failure accounting and timeout handling in `sendHttp()`
+- Added AVCHD name parsing helper (`extractAvchdInputName`) to stabilize media title extraction from nested paths.
+- Added detailed method-level comments throughout `index.js` to explain function intent and behavior.
+- Added a benchmark harness (`benchmarks/performance.benchmark.js`) and npm script (`benchmark`) for repeatable micro-benchmarking of hot paths.
+- Added integration/fault tests (`tests/integration.test.js`) and fixture replay data (`tests/fixtures/oppo-event-replay.log`) covering event replay, malformed HTTP payloads, reconnect storm dedupe, and runtime state normalization.
+- Added runtime config/state validation guards (`validateRuntimeConfig`, `validateStateInvariants`) plus normalization helpers for playback/input vectors.
+
+### Fixed
+- Fixed strictness and safety regressions around transport/control paths by consolidating logic into shared helpers and removing duplicated branches.
+- Fixed style/cleanliness issues in source formatting (removed trailing whitespace and corrected minor syntax/style typos).
+- Fixed a visibility-state crash in partial/mock HomeKit runtimes by making `updateServiceVisibility()` tolerate missing visibility characteristic enums and skipping unsupported writes safely.
+
+### Notes
+- `autoIP` behavior was intentionally kept unchanged.
+
 ## [5.1.0] - 2024-05-23
 ### Changed
 - Bug Fixes

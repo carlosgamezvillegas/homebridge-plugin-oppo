@@ -1,7 +1,7 @@
 {
   "displayName": "Homebridge Oppo 203/205",
   "name": "homebridge-oppo-udp",
-  "version": "5.1.0",
+  "version": "6.0.1",
   "description": "Homebridge Plugin to control your Oppo 203/205.",
   "license": "MIT",
   "repository": {
@@ -13,7 +13,7 @@
   },
   "engines": {
     "node": ">=10.17.0",
-    "homebridge": ">=1.0.0"
+    "homebridge": ">=1.0.0 || ^2.0.0-alpha.0"
   },
   "main": "index.js",
   "keywords": [
@@ -42,6 +42,14 @@
     "rimraf": "^3.0.2",
     "ts-node": "^9.0.0",
     "typescript": "^4.0.5"
+  },
+  "scripts": {
+    "benchmark": "node benchmarks/performance.benchmark.js",
+    "test:all": "node tests/regression.test.js && node tests/behavioral.test.js && node tests/integration.test.js && node tests/stress.test.js",
+    "test:behavioral": "node tests/behavioral.test.js",
+    "test:integration": "node tests/integration.test.js",
+    "test:regression": "node tests/regression.test.js && node tests/behavioral.test.js",
+    "test:stress": "node tests/stress.test.js"
   },
   "funding": [
     {

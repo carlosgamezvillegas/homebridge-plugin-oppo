@@ -26,6 +26,7 @@
         "default": 5000,
         "minimum": 5000,
         "maximum": 60000,
+        "multipleOf": 500,
         "required": false
       },
       "modelName": {
